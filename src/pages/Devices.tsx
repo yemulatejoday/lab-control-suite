@@ -1,3 +1,4 @@
+import { MonitorSmartphone, Wifi, WifiOff, Plus } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { API_URL } from "@/config";
 import { Button } from "@/components/ui/button";
@@ -33,6 +34,21 @@ export default function Devices() {
   }, []);
 
   const hasDevices = bots.length > 0;
+
+  if (!hasDevices && !isLoading) {
+    return (
+      <div className="flex min-h-[60vh] flex-col items-center justify-center text-center">
+        <div className="mb-6 flex h-24 w-24 items-center justify-center rounded-[2rem] bg-primary/10 text-primary animate-pulse">
+          <MonitorSmartphone className="h-12 w-12" />
+        </div>
+        <h2 className="font-display text-3xl font-black tracking-tight">No Devices Connected</h2>
+        <p className="mt-2 max-w-md text-muted-foreground">Your device registry is currently empty. Please connect a bot from the dashboard to start monitoring.</p>
+        <Button onClick={() => navigate("/")} size="lg" className="mt-8 h-14 rounded-2xl px-8 text-lg font-bold shadow-glow transition-all hover:scale-105 active:scale-95">
+          Go to Dashboard to Connect
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
