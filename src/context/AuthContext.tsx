@@ -5,6 +5,13 @@ interface User {
   name: string;
 }
 
+interface AuthContextType {
+  user: User | null;
+  accounts: User[];
+  login: (email: string, password?: string) => Promise<void>;
+  logout: () => void;
+  switchAccount: (email: string) => void;
+  updateProfile: (name: string) => void;
   isAuthenticated: boolean;
   activeBotId: string | null;
   connectBot: (id: string) => void;
