@@ -37,6 +37,8 @@ interface ThingSpeakState {
   connect: (cfg?: ThingSpeakConfig) => Promise<boolean>;
   disconnect: () => void;
   setRefreshInterval: (ms: number) => void;
+  isDemoMode: boolean;
+  setDemoMode: (enabled: boolean) => void;
 }
 
 const STORAGE_KEY = "thingspeak.devices.v1";
@@ -62,6 +64,9 @@ export function ThingSpeakProvider({ children }: { children: ReactNode }) {
     return stored && stored >= 5000 ? stored : 15000;
   });
   const [lastFetched, setLastFetched] = useState<Date | null>(null);
+  const [isDemoMode, setDemoMode] = useState<boolean>(() => {
+    return localStorage.getItem("thingspeak.demomode") === "true";
+  });
   const timerRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -71,6 +76,10 @@ export function ThingSpeakProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     localStorage.setItem(REFRESH_KEY, String(refreshInterval));
   }, [refreshInterval]);
+
+  useEffect(() => {
+    localStorage.setItem("thingspeak.demomode", String(isDemoMode));
+  }, [isDemoMode]);
 
   const fetchFeeds = useCallback(async (cfg: ThingSpeakConfig) => {
     if (!cfg.channelId || !cfg.readKey) return false;
@@ -198,6 +207,8 @@ export function ThingSpeakProvider({ children }: { children: ReactNode }) {
       connect,
       disconnect,
       setRefreshInterval,
+      isDemoMode,
+      setDemoMode,
     }),
     [
       config,
@@ -214,6 +225,8 @@ export function ThingSpeakProvider({ children }: { children: ReactNode }) {
       connect,
       disconnect,
       setRefreshInterval,
+      isDemoMode,
+      setDemoMode,
     ],
   );
 

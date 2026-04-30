@@ -188,6 +188,23 @@
     background-size: 100% 200%;
     animation: tank-wave 4s ease-in-out infinite;
   }
+
+  .premium-card {
+    @apply relative overflow-hidden rounded-[2rem] border bg-card/40 p-6 backdrop-blur-xl transition-all duration-500 hover:scale-[1.02] hover:shadow-glow;
+  }
+
+  .stat-label {
+    @apply text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground/80;
+  }
+
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
 }
 
 @keyframes tank-wave {

@@ -1,4 +1,4 @@
-import { Bell, Wifi, Cloud } from "lucide-react";
+import { Bell, Wifi, Cloud, ChevronDown, Plus, Check, Users } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -12,8 +12,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useThingSpeak, ConnState } from "@/context/ThingSpeakContext";
+import { useAuth } from "@/context/AuthContext";
 
 const titles: Record<string, { t: string; s: string }> = {
   "/": { t: "Pesticide Spraying Bot Dashboard", s: "Real-Time Monitoring and Data Analytics" },
@@ -64,8 +65,10 @@ function StatusPill({
 
 export function TopBar() {
   const { pathname } = useLocation();
+  const navigate = useNavigate();
   const { t, s } = titles[pathname] ?? titles["/"];
   const { esp32, status } = useThingSpeak();
+  const { logout, user, accounts, switchAccount } = useAuth();
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b bg-background/80 px-4 backdrop-blur-xl md:px-6">
@@ -77,8 +80,6 @@ export function TopBar() {
       </div>
 
       <div className="ml-auto flex items-center gap-2">
-        <StatusPill label="ESP32" icon={Wifi} state={esp32} />
-        <StatusPill label="ThingSpeak" icon={Cloud} state={status} />
 
         <ThemeToggle />
 
@@ -96,8 +97,8 @@ export function TopBar() {
             <DropdownMenuSeparator />
             {[
               { t: "Tank level below 25%", d: "1 min ago", c: "warning" },
-              { t: "ThingSpeak feed received", d: "8 min ago", c: "success" },
-              { t: "ESP32 reconnected to WiFi", d: "20 min ago", c: "primary" },
+              { t: "Live monitoring feed updated", d: "8 min ago", c: "success" },
+              { t: "Bot reconnected to network", d: "20 min ago", c: "primary" },
             ].map((n, i) => (
               <DropdownMenuItem key={i} className="flex items-start gap-3 py-3">
                 <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full bg-${n.c}`} />
@@ -110,31 +111,60 @@ export function TopBar() {
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-9 gap-2 rounded-full pl-1 pr-3">
-              <Avatar className="h-7 w-7">
-                <AvatarFallback className="bg-gradient-iot text-xs font-semibold text-primary-foreground">
-                  AG
-                </AvatarFallback>
-              </Avatar>
-              <span className="hidden text-sm font-medium sm:inline">Agri Monitor User</span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel>
-              <div className="flex flex-col">
-                <span>Agri Monitor User</span>
-                <span className="text-xs font-normal text-muted-foreground">monitor@agrispray.io</span>
-              </div>
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem>Profile</DropdownMenuItem>
-            <DropdownMenuItem>Preferences</DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-destructive focus:text-destructive">Log out</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="flex items-center gap-1 rounded-full border bg-card/50 p-1 shadow-sm transition-all hover:bg-card">
+          <Button 
+            variant="ghost" 
+            className="h-8 gap-2 rounded-full px-2 hover:bg-primary/10"
+            onClick={() => navigate("/profile")}
+          >
+            <Avatar className="h-7 w-7">
+              <AvatarFallback className="bg-gradient-iot text-xs font-semibold text-primary-foreground">
+                {user?.name?.substring(0, 2).toUpperCase() || "AG"}
+              </AvatarFallback>
+            </Avatar>
+            <span className="hidden text-sm font-medium sm:inline">{user?.name || "Agri Monitor User"}</span>
+          </Button>
+          
+          <div className="h-4 w-px bg-border mx-0.5" />
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-primary/10">
+                <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                <Users className="h-3 w-3" /> All Accounts
+              </DropdownMenuLabel>
+              {accounts.map((acc) => (
+                <DropdownMenuItem 
+                  key={acc.email} 
+                  onClick={() => switchAccount(acc.email)}
+                  className="flex items-center justify-between"
+                >
+                  <div className="flex flex-col">
+                    <span className="font-medium">{acc.name}</span>
+                    <span className="text-[10px] text-muted-foreground">{acc.email}</span>
+                  </div>
+                  {user?.email === acc.email && <Check className="h-4 w-4 text-primary" />}
+                </DropdownMenuItem>
+              ))}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => navigate("/login")} className="gap-2 font-bold">
+                <Plus className="h-4 w-4" /> Add Account
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => {
+                logout();
+                navigate("/login");
+              }} className="text-destructive focus:text-destructive font-bold">
+                Log out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
       {/* keep status reference to satisfy linter on unused */}
       <span className="hidden">{status}</span>

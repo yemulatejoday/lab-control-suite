@@ -11,6 +11,15 @@ import Devices from "./pages/Devices.tsx";
 import Demo from "./pages/Demo.tsx";
 import Reports from "./pages/Reports.tsx";
 import Profile from "./pages/Profile.tsx";
+import Auth from "./pages/Auth.tsx";
+import { AuthProvider, useAuth } from "./context/AuthContext";
+import { Navigate } from "react-router-dom";
+
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const { isAuthenticated } = useAuth();
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  return <>{children}</>;
+};
 
 const queryClient = new QueryClient();
 
@@ -19,19 +28,22 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <ThingSpeakProvider>
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/devices" element={<AppLayout><Devices /></AppLayout>} />
-            <Route path="/demo" element={<AppLayout><Demo /></AppLayout>} />
-            <Route path="/reports" element={<AppLayout><Reports /></AppLayout>} />
-            <Route path="/profile" element={<AppLayout><Profile /></AppLayout>} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </ThingSpeakProvider>
+      <AuthProvider>
+        <ThingSpeakProvider>
+          <BrowserRouter>
+            <Routes>
+              <Route path="/login" element={<Auth />} />
+              <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
+              <Route path="/devices" element={<ProtectedRoute><AppLayout><Devices /></AppLayout></ProtectedRoute>} />
+              <Route path="/demo" element={<ProtectedRoute><AppLayout><Demo /></AppLayout></ProtectedRoute>} />
+              <Route path="/reports" element={<ProtectedRoute><AppLayout><Reports /></AppLayout></ProtectedRoute>} />
+              <Route path="/profile" element={<ProtectedRoute><AppLayout><Profile /></AppLayout></ProtectedRoute>} />
+              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </ThingSpeakProvider>
+      </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );

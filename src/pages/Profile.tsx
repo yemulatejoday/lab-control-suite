@@ -1,40 +1,84 @@
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { Clock3, Mail, MonitorCheck, ShieldCheck, Tractor, UserRound } from "lucide-react";
+import { Clock3, Mail, MonitorCheck, ShieldCheck, Tractor, UserRound, Edit2, Check, X } from "lucide-react";
 import { monitoredDeviceList } from "@/lib/monitoring-devices";
-
-const profileItems = [
-  { label: "User Name", value: "Agri Monitor User", icon: UserRound },
-  { label: "Email", value: "monitor@agrispray.io", icon: Mail },
-  { label: "Total Connected Devices", value: `${monitoredDeviceList.length} Bots`, icon: Tractor },
-  { label: "Monitoring Access", value: "Read Only", icon: ShieldCheck },
-];
-
-const activity = monitoredDeviceList.map((device) => ({
-  device: `${device.name} · ${device.id}`,
-  lastActive: device.sync,
-  status: device.state,
-  task: device.task,
-}));
+import { useAuth } from "@/context/AuthContext";
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
 
 export default function Profile() {
+  const { user, updateProfile } = useAuth();
+  const [isEditing, setIsEditing] = useState(false);
+  const [newName, setNewName] = useState(user?.name || "");
+
+  const handleSave = () => {
+    if (!newName.trim()) {
+      toast.error("Name cannot be empty");
+      return;
+    }
+    updateProfile(newName);
+    setIsEditing(false);
+    toast.success("Profile updated!");
+  };
+
+  const profileItems = [
+    { label: "Total Connected Devices", value: `${monitoredDeviceList.length} Bots`, icon: Tractor },
+    { label: "Monitoring Access", value: "Read Only", icon: ShieldCheck },
+  ];
+
+  const activity = monitoredDeviceList.map((device) => ({
+    device: `${device.name} · ${device.id}`,
+    lastActive: device.sync,
+    status: device.state,
+    task: device.task,
+  }));
   return (
     <div className="space-y-6">
       <Card className="rounded-2xl p-6">
-        <div className="flex items-center gap-4">
-          <Avatar className="h-16 w-16">
-            <AvatarFallback className="bg-gradient-iot text-lg font-bold text-primary-foreground">AM</AvatarFallback>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+          <Avatar className="h-20 w-20 shadow-glow border-2 border-primary/20">
+            <AvatarFallback className="bg-gradient-iot text-2xl font-black text-primary-foreground">
+              {user?.name?.substring(0, 2).toUpperCase() || "AM"}
+            </AvatarFallback>
           </Avatar>
-          <div>
-            <Badge variant="outline" className="mb-2 border-primary/30 bg-primary/10 text-primary">Profile</Badge>
-            <h1 className="font-display text-2xl font-extrabold">Agri Monitor User</h1>
-            <p className="text-sm text-muted-foreground">Read-only access for pesticide spraying bot monitoring and analytics.</p>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-3 mb-1">
+              <Badge variant="outline" className="border-primary/30 bg-primary/10 text-primary font-bold">Bot Owner Profile</Badge>
+              {!isEditing ? (
+                <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full" onClick={() => setIsEditing(true)}>
+                  <Edit2 className="h-3 w-3 text-muted-foreground" />
+                </Button>
+              ) : (
+                <div className="flex items-center gap-1">
+                  <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full text-success" onClick={handleSave}>
+                    <Check className="h-3 w-3" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full text-destructive" onClick={() => { setIsEditing(false); setNewName(user?.name || ""); }}>
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              )}
+            </div>
+            
+            {isEditing ? (
+              <Input 
+                value={newName} 
+                onChange={(e) => setNewName(e.target.value)} 
+                className="max-w-xs h-10 font-display text-2xl font-extrabold bg-muted"
+                autoFocus
+              />
+            ) : (
+              <h1 className="font-display text-3xl font-black truncate">{user?.name || "Agri Monitor User"}</h1>
+            )}
+            <p className="text-sm text-muted-foreground mt-1 max-w-lg">Personalized monitoring access for your pesticide spraying fleet.</p>
           </div>
         </div>
       </Card>
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <section className="grid gap-4 md:grid-cols-2">
         {profileItems.map((item) => (
           <Card key={item.label} className="rounded-2xl p-5">
             <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">

@@ -26,11 +26,10 @@ const taskData = [
 ];
 
 const metrics = [
-  { label: "Distance Traveled", value: "2.4", unit: "km", icon: Route },
-  { label: "Area Covered", value: "1.1", unit: "hectares", icon: MapPinned },
-  { label: "Pesticide Sprayed", value: "3.2", unit: "liters", icon: SprayCan },
-  { label: "Operating Time", value: "2", unit: "hours", icon: Clock3 },
-  { label: "Task Status", value: "In Progress", unit: "", icon: CheckCircle2 },
+  { label: "Distance Traveled", value: "2400", unit: "m", icon: Route },
+  { label: "Area Covered", value: "2.7", unit: "acres", icon: MapPinned },
+  { label: "Pesticide Sprayed", value: "3.2", unit: "L", icon: SprayCan },
+  { label: "Operating Time", value: "2h 15m", unit: "", icon: Clock3 },
 ];
 
 const tooltipStyle = {
@@ -49,7 +48,7 @@ export default function Demo() {
         <p className="mt-1 text-sm text-muted-foreground">Preview the analytics that appear when a pesticide spraying bot is connected.</p>
       </section>
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {metrics.map((metric) => (
           <Card key={metric.label} className="stat-card">
             <div className="flex items-start justify-between gap-3">
@@ -94,19 +93,6 @@ export default function Demo() {
                 <Tooltip contentStyle={tooltipStyle} />
                 <Line type="monotone" dataKey="distance" stroke="hsl(var(--primary))" strokeWidth={3} dot={{ r: 3, fill: "hsl(var(--primary))" }} />
               </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </Card>
-        <Card className="rounded-2xl p-5">
-          <h2 className="font-display text-base font-bold">Task Completion</h2>
-          <div className="mt-4 h-[220px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie data={taskData} innerRadius={54} outerRadius={78} dataKey="value" paddingAngle={4}>
-                  {taskData.map((entry) => <Cell key={entry.name} fill={entry.color} />)}
-                </Pie>
-                <Tooltip contentStyle={tooltipStyle} />
-              </PieChart>
             </ResponsiveContainer>
           </div>
         </Card>

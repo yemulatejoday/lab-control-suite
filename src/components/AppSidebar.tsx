@@ -88,11 +88,8 @@ export function AppSidebar() {
           <div className="rounded-xl border bg-gradient-surface p-3 text-xs">
             <div className="flex items-center gap-2 font-semibold">
               <span className={`pulse-dot ${dotColor}`} />
-              Read-only feed {status === "connected" ? "Online" : status === "loading" ? "Loading…" : status === "error" ? "Error" : "Offline"}
+              {status === "connected" ? "Bot Online" : status === "loading" ? "Searching for Bot…" : "Bot Offline"}
             </div>
-            <p className="mt-1 truncate text-muted-foreground">
-              {config ? `Channel ${config.channelId}` : "Sample monitoring data"}
-            </p>
           </div>
         ) : (
           <div className="flex justify-center">
