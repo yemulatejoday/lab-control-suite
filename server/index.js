@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
-const { initDB, getUser, createUser, getBots, addBot, addTelemetry, getLatestTelemetry } = require('./db');
+const { initDB, getUser, createUser, getBots, addBot, addTelemetry, getLatestTelemetry, getAvailableBots } = require('./db');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -48,6 +48,11 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 // --- BOT ROUTES ---
+app.get('/api/available-bots', authenticate, async (req, res) => {
+  const bots = await getAvailableBots();
+  res.json(bots);
+});
+
 app.get('/api/bots', authenticate, async (req, res) => {
   const bots = await getBots(req.user.id);
   res.json(bots);

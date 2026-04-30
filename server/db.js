@@ -68,4 +68,12 @@ async function getLatestTelemetry(botId) {
   return db.get('SELECT * FROM telemetry WHERE botId = ? ORDER BY timestamp DESC LIMIT 1', [botId]);
 }
 
-module.exports = { initDB, getUser, createUser, getBots, addBot, addTelemetry, getLatestTelemetry };
+async function getAvailableBots() {
+  return db.all(`
+    SELECT DISTINCT botId as id, 'Ready to Pair' as name 
+    FROM telemetry 
+    WHERE botId NOT IN (SELECT id FROM bots)
+  `);
+}
+
+module.exports = { initDB, getUser, createUser, getBots, addBot, addTelemetry, getLatestTelemetry, getAvailableBots };

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { 
   Wifi, 
   Search, 
@@ -14,7 +15,6 @@ import {
   Tractor,
   Radio
 } from "lucide-react";
-import { monitoredDeviceList } from "@/lib/monitoring-devices";
 import { useAuth } from "@/context/AuthContext";
 import { API_URL } from "@/config";
 import { toast } from "sonner";
@@ -25,25 +25,30 @@ export default function ConnectDevice() {
   const [isScanning, setIsScanning] = useState(true);
   const [nearbyBots, setNearbyBots] = useState<any[]>([]);
 
+  const [manualBotId, setManualBotId] = useState("");
+
   useEffect(() => {
-    // Start scanning on page load
     handleStartDiscovery();
   }, []);
 
-  const handleStartDiscovery = () => {
+  const handleStartDiscovery = async () => {
     setIsScanning(true);
-    setNearbyBots([]);
-    
-    setTimeout(() => {
-      const available = monitoredDeviceList.map(d => ({
-        id: d.id,
-        name: d.name,
-        signal: Math.random() > 0.3 ? "Strong" : "Good",
-        status: d.state === "Offline" ? "Ready" : "In Use"
-      }));
-      setNearbyBots(available);
-      setIsScanning(false);
-    }, 3000);
+    try {
+      const token = localStorage.getItem("agri_token");
+      const res = await fetch(`${API_URL}/api/available-bots`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      setNearbyBots(data.map((b: any) => ({
+        ...b,
+        signal: "Strong",
+        status: "Ready"
+      })));
+    } catch (e) {
+      console.error("Failed to fetch available bots", e);
+    } finally {
+      setTimeout(() => setIsScanning(false), 2000);
+    }
   };
 
   const handleConnectBot = async (botId: string) => {
@@ -170,10 +175,24 @@ export default function ConnectDevice() {
 
             <div className="mt-12 p-8 rounded-[2.5rem] bg-secondary/30 border border-dashed border-muted-foreground/20 text-center">
               <h3 className="font-bold text-lg mb-2">Can't find your bot?</h3>
-              <p className="text-muted-foreground text-sm max-w-md mx-auto mb-6">If automatic discovery isn't working, you can manually input your bot's details below.</p>
-              <div className="flex flex-wrap justify-center gap-4">
-                <Button variant="secondary" className="rounded-xl h-12 px-6 font-bold">Enter Bot IP Address</Button>
-                <Button variant="secondary" className="rounded-xl h-12 px-6 font-bold">ThingSpeak Channel Setup</Button>
+              <p className="text-muted-foreground text-sm max-w-md mx-auto mb-6">Enter your hardware ID manually to link it to your account.</p>
+              <div className="flex flex-col sm:flex-row justify-center gap-3 max-w-md mx-auto">
+                <Input 
+                  placeholder="e.g. BOT-AG-102" 
+                  className="h-12 rounded-xl bg-background border-primary/20"
+                  value={manualBotId}
+                  onChange={(e) => setManualBotId(e.target.value)}
+                />
+                <Button 
+                  onClick={() => manualBotId && handleConnectBot(manualBotId)} 
+                  disabled={!manualBotId}
+                  className="rounded-xl h-12 px-8 font-bold shadow-glow"
+                >
+                  Connect Manually
+                </Button>
+              </div>
+              <div className="mt-6 flex flex-wrap justify-center gap-4 border-t pt-6 border-dashed">
+                <Button variant="ghost" className="rounded-xl h-10 px-6 font-bold text-xs text-muted-foreground">ThingSpeak Setup</Button>
               </div>
             </div>
           </div>
