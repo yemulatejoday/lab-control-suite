@@ -12,6 +12,7 @@ import Demo from "./pages/Demo.tsx";
 import Reports from "./pages/Reports.tsx";
 import Profile from "./pages/Profile.tsx";
 import Auth from "./pages/Auth.tsx";
+import ConnectBot from "./pages/ConnectBot.tsx";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { Navigate } from "react-router-dom";
 
@@ -38,6 +39,7 @@ const App = () => (
               <Route path="/demo" element={<ProtectedRoute><AppLayout><Demo /></AppLayout></ProtectedRoute>} />
               <Route path="/reports" element={<ProtectedRoute><AppLayout><Reports /></AppLayout></ProtectedRoute>} />
               <Route path="/profile" element={<ProtectedRoute><AppLayout><Profile /></AppLayout></ProtectedRoute>} />
+              <Route path="/connect-bot" element={<ProtectedRoute><AppLayout><ConnectBot /></AppLayout></ProtectedRoute>} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

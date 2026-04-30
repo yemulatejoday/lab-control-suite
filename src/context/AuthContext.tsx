@@ -5,17 +5,17 @@ interface User {
   name: string;
 }
 
-interface AuthContextType {
-  user: User | null;
-  accounts: User[];
-  login: (email: string, name?: string) => void;
-  logout: () => void;
-  switchAccount: (email: string) => void;
-  updateProfile: (name: string) => void;
   isAuthenticated: boolean;
+  activeBotId: string | null;
+  connectBot: (id: string) => void;
+  disconnectBot: () => void;
+  isLoading: boolean;
+  signup: (email: string, password: string, name: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(() => {
@@ -23,58 +23,100 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return saved ? JSON.parse(saved) : null;
   });
 
-  const [accounts, setAccounts] = useState<User[]>(() => {
-    const saved = localStorage.getItem("agri_accounts");
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [accounts, setAccounts] = useState<User[]>([]);
+  const [activeBotId, setActiveBotId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [token, setToken] = useState<string | null>(localStorage.getItem("agri_token"));
 
-  const login = (email: string, name?: string) => {
-    const newUser = { email, name: name || email.split("@")[0] };
-    setUser(newUser);
-    
-    setAccounts(prev => {
-      const exists = prev.find(a => a.email === email);
-      if (exists) {
-        // Update name if provided during signup/login again
-        return prev.map(a => a.email === email ? { ...a, name: name || a.name } : a);
-      }
-      const next = [...prev, newUser];
-      localStorage.setItem("agri_accounts", JSON.stringify(next));
-      return next;
-    });
-    
-    localStorage.setItem("agri_user", JSON.stringify(newUser));
+  const login = async (email: string, password?: string) => {
+    setIsLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      
+      setUser(data.user);
+      setToken(data.token);
+      localStorage.setItem("agri_token", data.token);
+      localStorage.setItem("agri_user", JSON.stringify(data.user));
+    } catch (e: any) {
+      toast.error(e.message || "Login failed");
+      throw e;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const signup = async (email: string, password: string, name: string) => {
+    setIsLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/api/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, name }),
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      
+      setUser(data.user);
+      setToken(data.token);
+      localStorage.setItem("agri_token", data.token);
+      localStorage.setItem("agri_user", JSON.stringify(data.user));
+    } catch (e: any) {
+      toast.error(e.message || "Signup failed");
+      throw e;
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const logout = () => {
     setUser(null);
-    setAccounts([]);
+    setToken(null);
     localStorage.removeItem("agri_user");
-    localStorage.removeItem("agri_accounts");
+    localStorage.removeItem("agri_token");
+    setActiveBotId(null);
   };
 
   const updateProfile = (name: string) => {
+    // For now keep local, could add API later
     if (!user) return;
     const updated = { ...user, name };
     setUser(updated);
-    setAccounts(prev => {
-      const next = prev.map(a => a.email === user.email ? updated : a);
-      localStorage.setItem("agri_accounts", JSON.stringify(next));
-      return next;
-    });
     localStorage.setItem("agri_user", JSON.stringify(updated));
   };
 
   const switchAccount = (email: string) => {
-    const target = accounts.find(a => a.email === email);
-    if (target) {
-      setUser(target);
-      localStorage.setItem("agri_user", JSON.stringify(target));
-    }
+    // Backend would need more logic for multi-account
+  };
+
+  const connectBot = (id: string) => {
+    setActiveBotId(id);
+  };
+
+  const disconnectBot = () => {
+    setActiveBotId(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, accounts, login, logout, switchAccount, updateProfile, isAuthenticated: !!user }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      accounts, 
+      login, 
+      logout, 
+      switchAccount, 
+      updateProfile, 
+      isAuthenticated: !!user,
+      activeBotId,
+      connectBot,
+      disconnectBot,
+      isLoading,
+      signup
+    }}>
       {children}
     </AuthContext.Provider>
   );

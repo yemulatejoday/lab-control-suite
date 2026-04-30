@@ -1,9 +1,39 @@
-import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/context/AuthContext";
+import { API_URL } from "@/config";
+import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
-import { MonitorSmartphone, Wifi, WifiOff } from "lucide-react";
-import { monitoredDeviceList } from "@/lib/monitoring-devices";
+import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
 
 export default function Devices() {
+  const { activeBotId } = useAuth();
+  const navigate = useNavigate();
+  const [bots, setBots] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchBots = async () => {
+      setIsLoading(true);
+      try {
+        const token = localStorage.getItem("agri_token");
+        const res = await fetch(`${API_URL}/api/bots`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        setBots(data);
+      } catch (e) {
+        toast.error("Failed to fetch registered bots");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchBots();
+  }, []);
+
+  const hasDevices = bots.length > 0;
+
   return (
     <div className="space-y-6">
       <section className="flex flex-col gap-3 rounded-2xl border bg-gradient-surface p-5 sm:flex-row sm:items-center sm:justify-between">
@@ -16,30 +46,25 @@ export default function Devices() {
       </section>
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {monitoredDeviceList.map((device) => {
-          const active = device.state === "Active";
+        {bots.map((bot) => {
+          const isActive = bot.id === activeBotId;
           return (
-            <Card key={device.id} className="rounded-2xl p-5">
+            <Card key={bot.id} className="rounded-2xl p-5 border-primary/10 hover:border-primary/30 transition-all">
               <div className="flex items-start justify-between gap-3">
                 <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10">
                   <MonitorSmartphone className="h-5 w-5 text-primary" />
                 </span>
-                <Badge variant="outline" className={active ? "border-success/30 bg-success/10 text-success" : "border-muted-foreground/30 bg-muted text-muted-foreground"}>
-                  {active ? <Wifi className="mr-1 h-3 w-3" /> : <WifiOff className="mr-1 h-3 w-3" />}
-                  {device.state}
+                <Badge variant="outline" className={isActive ? "border-success/30 bg-success/10 text-success" : "border-muted-foreground/30 bg-muted text-muted-foreground"}>
+                  {isActive ? <Wifi className="mr-1 h-3 w-3" /> : <WifiOff className="mr-1 h-3 w-3" />}
+                  {isActive ? "Active" : "Offline"}
                 </Badge>
               </div>
-              <h2 className="mt-4 font-display text-lg font-bold">{device.id}</h2>
-              <p className="mt-1 text-xs text-muted-foreground">{device.name} · Last Sync Time: {device.sync}</p>
-              <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
-                <div className="rounded-xl bg-secondary p-3">
-                  <p className="text-muted-foreground">Distance</p>
-                  <p className="mt-1 font-mono font-bold">{device.distance} km</p>
-                </div>
-                <div className="rounded-xl bg-secondary p-3">
-                  <p className="text-muted-foreground">Area</p>
-                  <p className="mt-1 font-mono font-bold">{device.area} ha</p>
-                </div>
+              <h2 className="mt-4 font-display text-lg font-bold">{bot.id}</h2>
+              <p className="mt-1 text-xs text-muted-foreground">{bot.name} · Connected HW ID</p>
+              <div className="mt-6 flex flex-col gap-2">
+                <Button size="sm" variant="outline" className="w-full rounded-xl text-xs h-9" onClick={() => navigate("/")}>
+                  View Dashboard
+                </Button>
               </div>
             </Card>
           );

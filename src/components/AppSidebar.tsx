@@ -83,20 +83,6 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="border-t p-3">
-        {!collapsed ? (
-          <div className="rounded-xl border bg-gradient-surface p-3 text-xs">
-            <div className="flex items-center gap-2 font-semibold">
-              <span className={`pulse-dot ${dotColor}`} />
-              {status === "connected" ? "Bot Online" : status === "loading" ? "Searching for Bot…" : "Bot Offline"}
-            </div>
-          </div>
-        ) : (
-          <div className="flex justify-center">
-            <span className={`pulse-dot ${dotColor}`} />
-          </div>
-        )}
-      </SidebarFooter>
     </Sidebar>
   );
 }

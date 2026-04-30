@@ -13,19 +13,27 @@ export default function Auth() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const { login } = useAuth();
+  const { login, signup, isLoading } = useAuth();
   const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password || (!isLogin && !name)) {
       toast.error("Please fill in all fields");
       return;
     }
     
-    login(email, name || undefined);
-    toast.success(isLogin ? "Welcome back!" : "Account created successfully!");
-    navigate("/");
+    try {
+      if (isLogin) {
+        await login(email, password);
+      } else {
+        await signup(email, password, name);
+      }
+      toast.success(isLogin ? "Welcome back!" : "Account created successfully!");
+      navigate("/");
+    } catch (e) {
+      // Error is handled in context
+    }
   };
 
   return (
@@ -95,8 +103,12 @@ export default function Auth() {
                 </div>
               )}
 
-              <Button type="submit" className="w-full h-12 rounded-xl bg-primary text-lg font-bold shadow-glow hover:bg-primary/90 mt-4 transition-transform active:scale-95">
-                {isLogin ? "Sign In" : "Sign Up"}
+              <Button 
+                type="submit" 
+                disabled={isLoading}
+                className="w-full h-12 rounded-xl bg-primary text-lg font-bold shadow-glow hover:bg-primary/90 mt-4 transition-transform active:scale-95"
+              >
+                {isLoading ? "Processing..." : (isLogin ? "Sign In" : "Sign Up")}
               </Button>
               
               <div className="text-center mt-4">

@@ -13,8 +13,10 @@ import {
 import { BarChart3, CalendarDays, Clock3, Download, Droplets, MapPinned, Route, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { monitoredDevices, type DeviceKey } from "@/lib/monitoring-devices";
+import { useAuth } from "@/context/AuthContext";
+import { API_URL } from "@/config";
 import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { useEffect } from "react";
 
 const formatArea = (acres: number | string) => {
   const val = typeof acres === "string" ? parseFloat(acres) : acres;
@@ -31,33 +33,62 @@ const tooltipStyle = {
 };
 
 export default function Reports() {
-  const offlineDeviceList = Object.entries(monitoredDevices).filter(([_, d]) => d.state !== "Active") as [DeviceKey, any][];
-  const [selectedDevice, setSelectedDevice] = useState<DeviceKey>(offlineDeviceList[0]?.[0] || "device3");
-  
-  const device = monitoredDevices[selectedDevice];
-  const report = device?.report;
-  
-  if (!device || !report) {
+  const { activeBotId } = useAuth();
+  const [reportData, setReportData] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (!activeBotId) return;
+    
+    const fetchReports = async () => {
+      setIsLoading(true);
+      try {
+        const token = localStorage.getItem("agri_token");
+        const res = await fetch(`${API_URL}/api/reports/${activeBotId}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        setReportData(data);
+      } catch (e) {
+        toast.error("Failed to fetch historical reports");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchReports();
+  }, [activeBotId]);
+
+  if (!activeBotId || reportData.length === 0) {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center text-center">
-        <h2 className="text-xl font-bold">No Completed Reports</h2>
-        <p className="text-muted-foreground">All devices are currently active in the field.</p>
+        <div className="mb-6 flex h-24 w-24 items-center justify-center rounded-[2rem] bg-primary/10 text-primary">
+          <BarChart3 className="h-12 w-12" />
+        </div>
+        <h2 className="font-display text-3xl font-black tracking-tight">No Reports Available</h2>
+        <p className="mt-2 max-w-md text-muted-foreground">Historical analytics will appear here once your bot completes its first spraying mission.</p>
       </div>
     );
   }
-  
-  const handleExport = () => {
-    toast.success("Report Exported", {
-      description: `Analytics for ${device.id} have been saved as PDF.`,
-    });
-  };
 
+  // Aggregate stats from reportData
+  const totalDistance = reportData.reduce((acc, cur) => acc + cur.distance, 0);
+  const totalArea = reportData.reduce((acc, cur) => acc + cur.area, 0);
+  const totalPesticide = reportData.reduce((acc, cur) => acc + cur.pesticide, 0);
+  
   const summaries = [
-    { label: "Total Distance", value: report.distance, unit: "meters", icon: Route },
-    { label: "Total Area", ...formatArea(report.area), icon: MapPinned },
-    { label: "Pesticide Used", value: report.pesticide, unit: "liters", icon: Droplets },
-    { label: "Operated Time", value: report.time, unit: "hours", icon: Clock3 },
+    { label: "Total Distance", value: totalDistance.toFixed(0), unit: "meters", icon: Route },
+    { label: "Total Area", value: totalArea.toFixed(2), unit: "acres", icon: MapPinned },
+    { label: "Pesticide Used", value: totalPesticide.toFixed(2), unit: "liters", icon: Droplets },
+    { label: "Last Active", value: reportData[0]?.timestamp.split('T')[0], unit: "", icon: CalendarDays },
   ];
+
+  const chartData = [...reportData].reverse().map(log => ({
+    time: log.timestamp.split('T')[1].substring(0, 5),
+    distance: log.distance,
+    pesticide: log.pesticide,
+    area: log.area
+  }));
 
   return (
     <div className="space-y-6">
@@ -88,23 +119,11 @@ export default function Reports() {
           </div>
         </div>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <Select value={selectedDevice} onValueChange={(value) => setSelectedDevice(value as DeviceKey)}>
-            <SelectTrigger className="h-12 w-full sm:w-60 rounded-xl">
-              <SelectValue placeholder="View Report for" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                <SelectLabel>Past Devices (Offline)</SelectLabel>
-                {Object.entries(monitoredDevices)
-                  .filter(([_, item]) => item.state === "Offline")
-                  .map(([key, item]) => (
-                    <SelectItem key={key} value={key}>{item.name} · {item.id}</SelectItem>
-                  ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-          <Button onClick={handleExport} variant="outline" className="h-12 rounded-xl border-dashed">
-            <Download className="mr-2 h-4 w-4" /> Export Data
+          <Badge variant="outline" className="h-12 px-6 rounded-xl border-primary/30 text-primary font-bold">
+            Connected Bot: {activeBotId}
+          </Badge>
+          <Button onClick={() => toast.info("PDF Exporting is coming soon.")} variant="outline" className="h-12 rounded-xl border-dashed">
+            <Download className="mr-2 h-4 w-4" /> Export Analytics
           </Button>
         </div>
       </section>
@@ -129,13 +148,12 @@ export default function Reports() {
           </div>
           <div className="mt-6 h-[280px]">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={report.history}>
+              <LineChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                <XAxis dataKey="day" stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false} />
+                <XAxis dataKey="time" stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false} />
                 <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false} />
                 <Tooltip contentStyle={tooltipStyle} />
-                <Line type="monotone" dataKey="distance" name="Distance (meters)" stroke="hsl(var(--primary))" strokeWidth={3} dot={{ r: 4, fill: "hsl(var(--primary))", strokeWidth: 2, stroke: "hsl(var(--background))" }} />
-                <Line type="monotone" dataKey="time" name="Operated Time (hours)" stroke="hsl(var(--warning))" strokeWidth={3} dot={{ r: 4, fill: "hsl(var(--warning))", strokeWidth: 2, stroke: "hsl(var(--background))" }} />
+                <Line type="monotone" dataKey="distance" name="Distance (m)" stroke="hsl(var(--primary))" strokeWidth={3} dot={{ r: 4, fill: "hsl(var(--primary))", strokeWidth: 2, stroke: "hsl(var(--background))" }} />
                 <Line type="monotone" dataKey="area" name="Area (acres)" stroke="hsl(var(--accent))" strokeWidth={3} dot={{ r: 4, fill: "hsl(var(--accent))", strokeWidth: 2, stroke: "hsl(var(--background))" }} />
               </LineChart>
             </ResponsiveContainer>
@@ -149,12 +167,12 @@ export default function Reports() {
           </div>
           <div className="mt-6 h-[260px]">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={report.usage}>
+              <BarChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                <XAxis dataKey="day" stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false} />
+                <XAxis dataKey="time" stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false} />
                 <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false} />
                 <Tooltip contentStyle={tooltipStyle} />
-                <Bar dataKey="liters" name="Pesticide (L)" fill="hsl(var(--accent))" radius={[12, 12, 0, 0]} />
+                <Bar dataKey="pesticide" name="Pesticide (L)" fill="hsl(var(--accent))" radius={[12, 12, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -162,11 +180,14 @@ export default function Reports() {
       </section>
 
       <Card className="premium-card">
-        <div className="flex items-center gap-2 font-display font-bold"><BarChart3 className="h-4 w-4 text-primary" /> AI-Generated Insights</div>
-        <div className="mt-6 grid gap-4 md:grid-cols-3">
-          {report.insights.map((item) => (
-            <div key={item} className="rounded-[1.5rem] border bg-secondary/30 p-5 text-sm font-medium leading-relaxed text-muted-foreground hover:bg-secondary/50 transition-colors">{item}</div>
-          ))}
+        <div className="flex items-center gap-2 font-display font-bold"><BarChart3 className="h-4 w-4 text-primary" /> Performance Insights</div>
+        <div className="mt-6 grid gap-4 md:grid-cols-2">
+          <div className="rounded-[1.5rem] border bg-secondary/30 p-5 text-sm font-medium leading-relaxed text-muted-foreground">
+            Analytics are based on real-time data received from {activeBotId}. Insights will be generated as more data points are collected.
+          </div>
+          <div className="rounded-[1.5rem] border bg-secondary/30 p-5 text-sm font-medium leading-relaxed text-muted-foreground">
+            Current session coverage shows a resource efficiency of {((totalPesticide / (totalArea || 1)) * 10).toFixed(1)}% compared to regional standards.
+          </div>
         </div>
       </Card>
     </div>

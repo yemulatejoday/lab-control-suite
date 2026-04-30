@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 
 export default function Profile() {
-  const { user, updateProfile } = useAuth();
+  const { user, updateProfile, activeBotId } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [newName, setNewName] = useState(user?.name || "");
 
@@ -25,7 +25,7 @@ export default function Profile() {
   };
 
   const profileItems = [
-    { label: "Total Connected Devices", value: `${monitoredDeviceList.length} Bots`, icon: Tractor },
+    { label: "Total Connected Devices", value: activeBotId ? "1 Bot" : "0 Bots", icon: Tractor },
     { label: "Monitoring Access", value: "Read Only", icon: ShieldCheck },
   ];
 
@@ -100,30 +100,38 @@ export default function Profile() {
           </Badge>
         </div>
         <div className="mt-4 overflow-x-auto">
-          <table className="w-full min-w-[640px] text-left text-sm">
-            <thead className="border-b text-xs uppercase tracking-wider text-muted-foreground">
-              <tr>
-                <th className="py-3 pr-4 font-semibold">Device ID</th>
-                <th className="py-3 pr-4 font-semibold">Last Active Time</th>
-                <th className="py-3 pr-4 font-semibold">Status</th>
-                <th className="py-3 pr-4 font-semibold">Last Task Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {activity.map((item) => (
-                <tr key={item.device}>
-                  <td className="py-3 pr-4 font-semibold">{item.device}</td>
-                  <td className="py-3 pr-4 font-mono text-xs text-muted-foreground">{item.lastActive}</td>
-                  <td className="py-3 pr-4">
-                    <Badge variant="outline" className={item.status === "Active" ? "border-success/30 bg-success/10 text-success" : "border-muted-foreground/30 bg-muted text-muted-foreground"}>{item.status}</Badge>
-                  </td>
-                  <td className="py-3 pr-4">
-                    <Badge variant="outline" className={item.task === "Completed" ? "border-primary/30 bg-primary/10 text-primary" : "border-accent/30 bg-accent/10 text-accent"}>{item.task}</Badge>
-                  </td>
+          {activeBotId ? (
+            <table className="w-full min-w-[640px] text-left text-sm">
+              <thead className="border-b text-xs uppercase tracking-wider text-muted-foreground">
+                <tr>
+                  <th className="py-3 pr-4 font-semibold">Device ID</th>
+                  <th className="py-3 pr-4 font-semibold">Last Active Time</th>
+                  <th className="py-3 pr-4 font-semibold">Status</th>
+                  <th className="py-3 pr-4 font-semibold">Last Task Status</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {activity.map((item) => (
+                  <tr key={item.device}>
+                    <td className="py-3 pr-4 font-semibold">{item.device}</td>
+                    <td className="py-3 pr-4 font-mono text-xs text-muted-foreground">{item.lastActive}</td>
+                    <td className="py-3 pr-4">
+                      <Badge variant="outline" className={item.status === "Active" ? "border-success/30 bg-success/10 text-success" : "border-muted-foreground/30 bg-muted text-muted-foreground"}>{item.status}</Badge>
+                    </td>
+                    <td className="py-3 pr-4">
+                      <Badge variant="outline" className={item.task === "Completed" ? "border-primary/30 bg-primary/10 text-primary" : "border-accent/30 bg-accent/10 text-accent"}>{item.task}</Badge>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-12 text-center border-2 border-dashed border-muted/50 rounded-2xl">
+              <MonitorCheck className="h-10 w-10 text-muted mb-3" />
+              <p className="font-bold text-muted-foreground">No Bot Activity Recorded</p>
+              <p className="text-xs text-muted-foreground mt-1">Connect a device to see historical telemetry logs.</p>
+            </div>
+          )}
         </div>
       </Card>
     </div>
