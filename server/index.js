@@ -40,8 +40,11 @@ app.post('/api/auth/register', async (req, res) => {
 app.post('/api/auth/login', async (req, res) => {
   const { email, password } = req.body;
   const user = await getUser(email);
-  if (!user || !(await bcrypt.compare(password, user.password))) {
-    return res.status(401).json({ error: 'Invalid credentials' });
+  if (!user) {
+    return res.status(404).json({ error: 'Account does not exist, please create an account' });
+  }
+  if (!(await bcrypt.compare(password, user.password))) {
+    return res.status(401).json({ error: 'Invalid password or email' });
   }
   const token = jwt.sign({ id: user.id, email }, SECRET);
   res.json({ token, user: { email: user.email, name: user.name } });
