@@ -1,3 +1,6 @@
+import { createRequire } from 'module';
+
+const require = createRequire(import.meta.url);
 const app = require('../server/app');
 const { initDB } = require('../server/db');
 
@@ -10,7 +13,7 @@ const ensureDb = () => {
   return initPromise;
 };
 
-module.exports = async (req, res) => {
+export default async function handler(req, res) {
   await ensureDb();
   return app(req, res);
-};
+}
