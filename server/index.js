@@ -1,5 +1,5 @@
-const app = require('./app');
-const { initDB, removeBotData } = require('./db');
+const app = require('./app.cjs');
+const { initDB, removeBotData } = require('./db.cjs');
 
 const PORT = process.env.PORT || 5000;
 

@@ -1,8 +1,8 @@
 import { createRequire } from 'module';
 
 const require = createRequire(import.meta.url);
-const app = require('../server/app');
-const { initDB } = require('../server/db');
+const app = require('../server/app.cjs');
+const { initDB } = require('../server/db.cjs');
 
 let initPromise;
 

@@ -12,7 +12,7 @@ const {
   getTelemetryLogs,
   getAvailableBots,
   hasTelemetry,
-} = require('./db');
+} = require('./db.cjs');
 
 const app = express();
 const SECRET = process.env.JWT_SECRET || 'agri-bot-prod-secret-999';
