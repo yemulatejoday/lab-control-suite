@@ -1,13 +1,23 @@
 const sqlite3 = require('sqlite3').verbose();
 const { open } = require('sqlite');
 const path = require('path');
+const fs = require('fs');
 
 let db;
-const dbPath = process.env.VERCEL
-  ? path.join('/tmp', 'database.sqlite')
-  : path.join(__dirname, 'database.sqlite');
+const isRender = Boolean(process.env.RENDER || process.env.RENDER_EXTERNAL_URL);
+const dbPath =
+  process.env.DB_PATH ||
+  (process.env.VERCEL
+    ? path.join('/tmp', 'database.sqlite')
+    : isRender
+    ? path.join('/var/data', 'database.sqlite')
+    : path.join(__dirname, 'database.sqlite'));
 
 async function initDB() {
+  const dbDir = path.dirname(dbPath);
+  if (!fs.existsSync(dbDir)) {
+    fs.mkdirSync(dbDir, { recursive: true });
+  }
   db = await open({
     filename: dbPath,
     driver: sqlite3.Database
