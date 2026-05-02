@@ -1,0 +1,217 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Light theme — agriculture / eco green */
+    --background: 90 30% 97%;
+    --foreground: 150 30% 12%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 150 30% 12%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 150 30% 12%;
+
+    /* Primary: leaf green */
+    --primary: 142 65% 38%;
+    --primary-foreground: 0 0% 100%;
+    --primary-glow: 142 70% 55%;
+
+    /* Secondary: soft sage */
+    --secondary: 100 25% 94%;
+    --secondary-foreground: 150 30% 18%;
+
+    --muted: 100 20% 93%;
+    --muted-foreground: 150 12% 40%;
+
+    /* Accent: tech blue (IoT) */
+    --accent: 205 90% 48%;
+    --accent-foreground: 0 0% 100%;
+    --accent-glow: 200 95% 60%;
+
+    /* Info / IoT signal */
+    --info: 210 90% 52%;
+    --info-foreground: 0 0% 100%;
+
+    --destructive: 0 78% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    --warning: 38 95% 52%;
+    --warning-foreground: 30 50% 12%;
+
+    --success: 142 65% 38%;
+    --success-foreground: 0 0% 100%;
+
+    --border: 110 20% 88%;
+    --input: 110 20% 88%;
+    --ring: 142 65% 38%;
+
+    --radius: 1rem;
+
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(142 65% 38%), hsl(95 60% 50%));
+    --gradient-accent: linear-gradient(135deg, hsl(205 90% 48%), hsl(190 85% 55%));
+    --gradient-iot: linear-gradient(135deg, hsl(142 65% 38%), hsl(205 90% 48%));
+    --gradient-surface: linear-gradient(180deg, hsl(0 0% 100%), hsl(100 25% 96%));
+    --gradient-glow: radial-gradient(circle at 50% 0%, hsl(142 65% 38% / 0.18), transparent 70%);
+    --gradient-tank: linear-gradient(180deg, hsl(190 80% 55%), hsl(210 85% 45%));
+
+    /* Shadows */
+    --shadow-sm: 0 1px 2px 0 hsl(150 30% 12% / 0.05);
+    --shadow-md: 0 4px 14px -2px hsl(142 50% 20% / 0.10);
+    --shadow-lg: 0 14px 36px -12px hsl(142 50% 20% / 0.18);
+    --shadow-glow: 0 0 40px hsl(142 65% 38% / 0.30);
+
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+    /* Sidebar */
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 150 25% 22%;
+    --sidebar-primary: 142 65% 38%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 100 25% 94%;
+    --sidebar-accent-foreground: 150 30% 18%;
+    --sidebar-border: 110 20% 90%;
+    --sidebar-ring: 142 65% 38%;
+  }
+
+  .dark {
+    /* Dark theme — deep forest */
+    --background: 150 25% 7%;
+    --foreground: 100 15% 92%;
+
+    --card: 150 22% 10%;
+    --card-foreground: 100 15% 92%;
+
+    --popover: 150 22% 10%;
+    --popover-foreground: 100 15% 92%;
+
+    --primary: 142 60% 50%;
+    --primary-foreground: 150 30% 8%;
+    --primary-glow: 95 65% 60%;
+
+    --secondary: 150 18% 14%;
+    --secondary-foreground: 100 15% 92%;
+
+    --muted: 150 18% 14%;
+    --muted-foreground: 100 10% 65%;
+
+    --accent: 205 85% 55%;
+    --accent-foreground: 0 0% 100%;
+    --accent-glow: 200 90% 65%;
+
+    --info: 210 90% 60%;
+    --info-foreground: 0 0% 100%;
+
+    --destructive: 0 75% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --warning: 38 95% 58%;
+    --warning-foreground: 30 50% 10%;
+
+    --success: 142 60% 50%;
+    --success-foreground: 150 30% 8%;
+
+    --border: 150 18% 16%;
+    --input: 150 18% 16%;
+    --ring: 142 60% 50%;
+
+    --gradient-primary: linear-gradient(135deg, hsl(142 60% 45%), hsl(95 60% 55%));
+    --gradient-accent: linear-gradient(135deg, hsl(205 85% 50%), hsl(190 85% 60%));
+    --gradient-iot: linear-gradient(135deg, hsl(142 60% 45%), hsl(205 85% 55%));
+    --gradient-surface: linear-gradient(180deg, hsl(150 22% 10%), hsl(150 25% 7%));
+    --gradient-glow: radial-gradient(circle at 50% 0%, hsl(142 60% 50% / 0.20), transparent 70%);
+    --gradient-tank: linear-gradient(180deg, hsl(190 75% 50%), hsl(210 85% 40%));
+
+    --shadow-sm: 0 1px 2px 0 hsl(0 0% 0% / 0.4);
+    --shadow-md: 0 4px 14px -2px hsl(0 0% 0% / 0.5);
+    --shadow-lg: 0 14px 36px -12px hsl(0 0% 0% / 0.7);
+    --shadow-glow: 0 0 40px hsl(142 60% 50% / 0.35);
+
+    --sidebar-background: 150 25% 8%;
+    --sidebar-foreground: 100 12% 78%;
+    --sidebar-primary: 142 60% 50%;
+    --sidebar-primary-foreground: 150 30% 8%;
+    --sidebar-accent: 150 18% 13%;
+    --sidebar-accent-foreground: 100 15% 92%;
+    --sidebar-border: 150 18% 14%;
+    --sidebar-ring: 142 60% 50%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Inter', system-ui, sans-serif;
+    font-feature-settings: 'cv11', 'ss01';
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    @apply tracking-tight;
+  }
+
+  .font-mono {
+    font-family: 'JetBrains Mono', monospace;
+  }
+}
+
+@layer components {
+  .stat-card {
+    @apply relative overflow-hidden rounded-2xl border bg-card p-5 transition-all duration-300 hover:shadow-[var(--shadow-md)];
+  }
+
+  .glass-panel {
+    @apply rounded-2xl border bg-card/60 backdrop-blur-xl;
+  }
+
+  .pulse-dot {
+    @apply relative inline-flex h-2.5 w-2.5 rounded-full;
+  }
+
+  .pulse-dot::before {
+    content: '';
+    @apply absolute inset-0 rounded-full opacity-75 animate-ping;
+    background: inherit;
+  }
+
+  .tank-fill {
+    background: var(--gradient-tank);
+    background-size: 100% 200%;
+    animation: tank-wave 4s ease-in-out infinite;
+  }
+
+  .premium-card {
+    @apply relative overflow-hidden rounded-[2rem] border bg-card/40 p-6 backdrop-blur-xl transition-all duration-500 hover:scale-[1.02] hover:shadow-glow;
+  }
+
+  .stat-label {
+    @apply text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground/80;
+  }
+
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes tank-wave {
+  0%, 100% { background-position: 0 0; }
+  50% { background-position: 0 20px; }
+}
+
+@keyframes liquid-rise {
+  from { height: 0%; }
+}
