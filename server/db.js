@@ -3,10 +3,13 @@ const { open } = require('sqlite');
 const path = require('path');
 
 let db;
+const dbPath = process.env.VERCEL
+  ? path.join('/tmp', 'database.sqlite')
+  : path.join(__dirname, 'database.sqlite');
 
 async function initDB() {
   db = await open({
-    filename: path.join(__dirname, 'database.sqlite'),
+    filename: dbPath,
     driver: sqlite3.Database
   });
 

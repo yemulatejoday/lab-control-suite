@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { toast } from "sonner";
+import { API_URL } from "@/config";
 
 interface User {
   email: string;
@@ -25,7 +26,6 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 const ACCOUNTS_KEY = "agri_accounts";
 
 const loadStoredAccounts = (): StoredAccount[] => {
