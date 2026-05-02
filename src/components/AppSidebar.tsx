@@ -14,13 +14,14 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { useThingSpeak } from "@/context/ThingSpeakContext";
+import { useLanguage } from "@/context/LanguageContext";
 
 const items = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard },
-  { title: "Devices", url: "/devices", icon: MonitorSmartphone },
-  { title: "Demo", url: "/demo", icon: BarChart3 },
-  { title: "Reports", url: "/reports", icon: ScrollText },
-  { title: "Profile", url: "/profile", icon: UserRound },
+  { titleKey: "nav.dashboard", url: "/", icon: LayoutDashboard },
+  { titleKey: "nav.devices", url: "/devices", icon: MonitorSmartphone },
+  { titleKey: "nav.demo", url: "/demo", icon: BarChart3 },
+  { titleKey: "nav.reports", url: "/reports", icon: ScrollText },
+  { titleKey: "nav.profile", url: "/profile", icon: UserRound },
 ];
 
 export function AppSidebar() {
@@ -28,6 +29,7 @@ export function AppSidebar() {
   const collapsed = state === "collapsed";
   const location = useLocation();
   const { status, config } = useThingSpeak();
+  const { t } = useLanguage();
 
   const dotColor =
     status === "connected" ? "bg-success" : status === "loading" ? "bg-warning" : status === "error" ? "bg-destructive" : "bg-muted-foreground";
@@ -41,8 +43,8 @@ export function AppSidebar() {
           </div>
           {!collapsed && (
             <div className="flex flex-col leading-tight animate-fade-in">
-              <span className="font-display text-base font-bold">SprayBot Monitor</span>
-              <span className="text-[11px] text-muted-foreground">Monitoring only</span>
+              <span className="font-display text-base font-bold">{t("app.brandName")}</span>
+              <span className="text-[11px] text-muted-foreground">{t("app.brandTagline")}</span>
             </div>
           )}
         </div>
@@ -52,18 +54,19 @@ export function AppSidebar() {
         <SidebarGroup>
           {!collapsed && (
             <SidebarGroupLabel className="text-[10px] uppercase tracking-wider text-muted-foreground/70">
-              Analytics
+              {t("nav.analytics")}
             </SidebarGroupLabel>
           )}
           <SidebarGroupContent>
             <SidebarMenu>
               {items.map((item) => {
                 const active = location.pathname === item.url;
+                const label = t(item.titleKey);
                 return (
-                  <SidebarMenuItem key={item.title}>
+                  <SidebarMenuItem key={item.titleKey}>
                     <SidebarMenuButton
                       asChild
-                      tooltip={item.title}
+                      tooltip={label}
                       className={
                         active
                           ? "bg-gradient-primary text-primary-foreground hover:bg-gradient-primary hover:text-primary-foreground shadow-md-soft h-11"
@@ -72,7 +75,7 @@ export function AppSidebar() {
                     >
                       <NavLink to={item.url} end>
                         <item.icon className="h-[18px] w-[18px]" />
-                        <span className="font-medium">{item.title}</span>
+                        <span className="font-medium">{label}</span>
                       </NavLink>
                     </SidebarMenuButton>
                   </SidebarMenuItem>

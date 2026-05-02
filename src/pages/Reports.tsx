@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import { API_URL } from "@/config";
 import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { useLanguage } from "@/context/LanguageContext";
 
 const tooltipStyle = {
   background: "hsl(var(--popover))",
@@ -30,6 +31,7 @@ const formatDateLabel = (timestamp?: string) => {
 
 export default function Reports() {
   const { activeBotId } = useAuth();
+  const { t } = useLanguage();
   const [reportData, setReportData] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -46,7 +48,7 @@ export default function Reports() {
         const data = await res.json();
         setReportData(data);
       } catch (e) {
-        toast.error("Failed to fetch historical reports");
+        toast.error(t("reports.fetchError"));
       } finally {
         setIsLoading(false);
       }
@@ -61,8 +63,8 @@ export default function Reports() {
         <div className="mb-6 flex h-24 w-24 items-center justify-center rounded-[2rem] bg-primary/10 text-primary">
           <BarChart3 className="h-12 w-12" />
         </div>
-        <h2 className="font-display text-3xl font-black tracking-tight">No Reports Available</h2>
-        <p className="mt-2 max-w-md text-muted-foreground">Historical analytics will appear here once your bot completes its first spraying mission.</p>
+        <h2 className="font-display text-3xl font-black tracking-tight">{t("reports.noReportsTitle")}</h2>
+        <p className="mt-2 max-w-md text-muted-foreground">{t("reports.noReportsDesc")}</p>
       </div>
     );
   }
@@ -73,10 +75,10 @@ export default function Reports() {
   const totalPesticide = reportData.reduce((acc, cur) => acc + cur.pesticide, 0);
   
   const summaries = [
-    { label: "Total Distance", value: totalDistance.toFixed(0), unit: "meters", icon: Route },
-    { label: "Total Area", value: totalArea.toFixed(2), unit: "acres", icon: MapPinned },
-    { label: "Pesticide Used", value: totalPesticide.toFixed(2), unit: "liters", icon: Droplets },
-    { label: "Last Active", value: formatDateLabel(reportData[0]?.timestamp), unit: "", icon: CalendarDays },
+    { label: t("reports.totalDistance"), value: totalDistance.toFixed(0), unit: t("unit.meters"), icon: Route },
+    { label: t("reports.totalArea"), value: totalArea.toFixed(2), unit: t("unit.acres"), icon: MapPinned },
+    { label: t("reports.pesticideUsed"), value: totalPesticide.toFixed(2), unit: t("unit.liters"), icon: Droplets },
+    { label: t("reports.lastActive"), value: formatDateLabel(reportData[0]?.timestamp), unit: "", icon: CalendarDays },
   ];
 
   const chartData = [...reportData].reverse().map(log => ({
@@ -91,25 +93,25 @@ export default function Reports() {
       <section className="flex flex-col gap-4 rounded-[2rem] border bg-gradient-surface p-6 lg:flex-row lg:items-center lg:justify-between shadow-sm">
         <div className="flex flex-col">
           <div className="flex items-center gap-2 mb-2">
-            <Badge variant="outline" className="border-primary/30 bg-primary/10 text-[10px] font-bold uppercase tracking-widest text-primary">Performance Reports</Badge>
+            <Badge variant="outline" className="border-primary/30 bg-primary/10 text-[10px] font-bold uppercase tracking-widest text-primary">{t("reports.performanceReports")}</Badge>
             <Badge
               variant="secondary"
               className={`text-[10px] font-bold uppercase tracking-widest ${
                 activeBotId ? "bg-success/10 text-success border-success/20" : "bg-muted text-muted-foreground border-none"
               }`}
             >
-              {activeBotId ? "Connected" : "Disconnected"}
+              {activeBotId ? t("reports.connected") : t("reports.disconnected")}
             </Badge>
           </div>
-          <h1 className="font-display text-2xl font-extrabold tracking-tight">Operation Analytics</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Historical performance data and resource efficiency metrics.</p>
+          <h1 className="font-display text-2xl font-extrabold tracking-tight">{t("reports.operationAnalytics")}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{t("reports.operationDesc")}</p>
         </div>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <Badge variant="outline" className="h-12 px-6 rounded-xl border-primary/30 text-primary font-bold">
-            Connected Bot: {activeBotId || "None"}
+            {t("reports.connectedBot", { botId: activeBotId || t("common.none") })}
           </Badge>
-          <Button onClick={() => toast.info("PDF Exporting is coming soon.")} variant="outline" className="h-12 rounded-xl border-dashed">
-            <Download className="mr-2 h-4 w-4" /> Export Analytics
+          <Button onClick={() => toast.info(t("reports.exportSoon"))} variant="outline" className="h-12 rounded-xl border-dashed">
+            <Download className="mr-2 h-4 w-4" /> {t("button.exportAnalytics")}
           </Button>
         </div>
       </section>
@@ -129,7 +131,7 @@ export default function Reports() {
       <section className="grid gap-4 lg:grid-cols-2">
         <Card className="premium-card">
           <div className="flex items-center justify-between">
-            <h2 className="font-display text-base font-bold">Historical Performance</h2>
+            <h2 className="font-display text-base font-bold">{t("reports.historicalPerformance")}</h2>
             <Route className="h-4 w-4 text-primary" />
           </div>
           <div className="mt-6 h-[280px]">
@@ -148,7 +150,7 @@ export default function Reports() {
 
         <Card className="premium-card">
           <div className="flex items-center justify-between">
-            <h2 className="font-display text-base font-bold">Resource Utilization</h2>
+            <h2 className="font-display text-base font-bold">{t("reports.resourceUtilization")}</h2>
             <Droplets className="h-4 w-4 text-primary" />
           </div>
           <div className="mt-6 h-[260px]">
@@ -166,13 +168,13 @@ export default function Reports() {
       </section>
 
       <Card className="premium-card">
-        <div className="flex items-center gap-2 font-display font-bold"><BarChart3 className="h-4 w-4 text-primary" /> Performance Insights</div>
+        <div className="flex items-center gap-2 font-display font-bold"><BarChart3 className="h-4 w-4 text-primary" /> {t("reports.performanceInsights")}</div>
         <div className="mt-6 grid gap-4 md:grid-cols-2">
           <div className="rounded-[1.5rem] border bg-secondary/30 p-5 text-sm font-medium leading-relaxed text-muted-foreground">
-            Analytics are based on real-time data received from {activeBotId}. Insights will be generated as more data points are collected.
+            {t("reports.insightData", { botId: activeBotId || t("common.none") })}
           </div>
           <div className="rounded-[1.5rem] border bg-secondary/30 p-5 text-sm font-medium leading-relaxed text-muted-foreground">
-            Current session coverage shows a resource efficiency of {((totalPesticide / (totalArea || 1)) * 10).toFixed(1)}% compared to regional standards.
+            {t("reports.insightEfficiency", { percent: ((totalPesticide / (totalArea || 1)) * 10).toFixed(1) })}
           </div>
         </div>
       </Card>

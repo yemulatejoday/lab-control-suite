@@ -22,6 +22,7 @@ import { Download, Search } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import { API_URL } from "@/config";
+import { useLanguage } from "@/context/LanguageContext";
 
 const styles: Record<string, string> = {
   info: "border-primary/30 bg-primary/10 text-primary",
@@ -32,6 +33,7 @@ const styles: Record<string, string> = {
 
 export default function Logs() {
   const { activeBotId } = useAuth();
+  const { t } = useLanguage();
   const [query, setQuery] = useState("");
   const [type, setType] = useState("all");
   const [logs, setLogs] = useState<any[]>([]);
@@ -53,29 +55,34 @@ export default function Logs() {
         const data = await res.json();
         const rows = Array.isArray(data) ? data : [];
         const mapped = rows.map((entry: any) => {
-          const status = entry.status === "Error" ? "error" : entry.battery < 20 || entry.tank < 20 ? "warn" : "info";
-          const event = entry.status === "Error"
-            ? "Device Alert"
-            : entry.battery < 20
-            ? "Battery Warning"
-            : entry.tank < 20
-            ? "Tank Warning"
-            : "Telemetry Update";
-          const detailParts = [] as string[];
-          if (typeof entry.distance === "number") detailParts.push(`Distance ${entry.distance.toFixed(2)} m`);
-          if (typeof entry.area === "number") detailParts.push(`Area ${entry.area.toFixed(2)} acres`);
-          if (typeof entry.tank === "number") detailParts.push(`Tank ${entry.tank}%`);
-          if (typeof entry.battery === "number") detailParts.push(`Battery ${entry.battery}%`);
+          const isError = entry.status === "Error";
+          const isBatteryWarn = typeof entry.battery === "number" && entry.battery < 20;
+          const isTankWarn = typeof entry.tank === "number" && entry.tank < 20;
+          const status = isError ? "error" : isBatteryWarn || isTankWarn ? "warn" : "info";
+          const eventKey = isError
+            ? "logs.deviceAlert"
+            : isBatteryWarn
+            ? "logs.batteryWarning"
+            : isTankWarn
+            ? "logs.tankWarning"
+            : "logs.telemetryUpdate";
+          const eventType = isError ? "device" : isTankWarn ? "tank" : isBatteryWarn ? "device" : "telemetry";
+          const detailParts = [] as Array<{ key: string; value: string }>;
+          if (typeof entry.distance === "number") detailParts.push({ key: "logs.detailDistance", value: entry.distance.toFixed(2) });
+          if (typeof entry.area === "number") detailParts.push({ key: "logs.detailArea", value: entry.area.toFixed(2) });
+          if (typeof entry.tank === "number") detailParts.push({ key: "logs.detailTank", value: entry.tank.toFixed(0) });
+          if (typeof entry.battery === "number") detailParts.push({ key: "logs.detailBattery", value: entry.battery.toFixed(0) });
           return {
             ts: entry.timestamp,
-            event,
-            detail: detailParts.join(" · ") || "Telemetry received",
+            eventKey,
+            eventType,
+            detailParts,
             status,
           };
         });
         setLogs(mapped);
       } catch (e) {
-        toast.error("Failed to fetch monitoring logs");
+        toast.error(t("logs.fetchError"));
       } finally {
         setIsLoading(false);
       }
@@ -86,8 +93,13 @@ export default function Logs() {
 
   const filtered = logs.filter((log) => {
     const q = query.toLowerCase();
-    const matchQ = log.event.toLowerCase().includes(q) || log.detail.toLowerCase().includes(q);
-    const matchT = type === "all" || log.event.toLowerCase().includes(type);
+    const eventLabel = t(log.eventKey).toLowerCase();
+    const detailLabel = (log.detailParts.length > 0
+      ? log.detailParts.map((part: any) => t(part.key, { value: part.value })).join(" · ")
+      : t("logs.detailReceived")
+    ).toLowerCase();
+    const matchQ = eventLabel.includes(q) || detailLabel.includes(q);
+    const matchT = type === "all" || log.eventType === type;
     return matchQ && matchT;
   });
 
@@ -97,24 +109,24 @@ export default function Logs() {
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
           <div className="relative flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search monitoring logs…" className="h-10 pl-9" />
+            <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t("logs.searchPlaceholder")} className="h-10 pl-9" />
           </div>
 
           <Select value={type} onValueChange={setType}>
             <SelectTrigger className="h-10 w-full lg:w-44">
-              <SelectValue placeholder="Event type" />
+              <SelectValue placeholder={t("logs.eventType")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All events</SelectItem>
-              <SelectItem value="telemetry">Telemetry</SelectItem>
-              <SelectItem value="task">Task</SelectItem>
-              <SelectItem value="tank">Tank</SelectItem>
-              <SelectItem value="device">Device</SelectItem>
+              <SelectItem value="all">{t("logs.allEvents")}</SelectItem>
+              <SelectItem value="telemetry">{t("logs.telemetry")}</SelectItem>
+              <SelectItem value="task">{t("logs.task")}</SelectItem>
+              <SelectItem value="tank">{t("logs.tank")}</SelectItem>
+              <SelectItem value="device">{t("logs.device")}</SelectItem>
             </SelectContent>
           </Select>
 
-          <Button className="bg-gradient-primary text-primary-foreground hover:opacity-90" onClick={() => toast.success("Monitoring logs exported as CSV")}>
-            <Download className="mr-2 h-4 w-4" /> Export
+          <Button className="bg-gradient-primary text-primary-foreground hover:opacity-90" onClick={() => toast.success(t("logs.exportSuccess"))}>
+            <Download className="mr-2 h-4 w-4" /> {t("button.export")}
           </Button>
         </div>
       </Card>
@@ -123,21 +135,31 @@ export default function Logs() {
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
-              <TableHead className="w-[180px]">Timestamp</TableHead>
-              <TableHead className="w-[180px]">Event</TableHead>
-              <TableHead>Detail</TableHead>
-              <TableHead className="w-[110px]">Status</TableHead>
+              <TableHead className="w-[180px]">{t("logs.timestamp")}</TableHead>
+              <TableHead className="w-[180px]">{t("logs.event")}</TableHead>
+              <TableHead>{t("logs.detail")}</TableHead>
+              <TableHead className="w-[110px]">{t("logs.status")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filtered.map((log, index) => (
-              <TableRow key={`${log.ts}-${log.event}`} className="animate-fade-in" style={{ animationDelay: `${index * 25}ms` }}>
+              <TableRow key={`${log.ts}-${log.eventKey}`} className="animate-fade-in" style={{ animationDelay: `${index * 25}ms` }}>
                 <TableCell className="font-mono text-xs text-muted-foreground">{log.ts}</TableCell>
-                <TableCell className="font-semibold">{log.event}</TableCell>
-                <TableCell className="text-sm text-muted-foreground">{log.detail}</TableCell>
+                <TableCell className="font-semibold">{t(log.eventKey)}</TableCell>
+                <TableCell className="text-sm text-muted-foreground">
+                  {log.detailParts.length > 0
+                    ? log.detailParts.map((part: any) => t(part.key, { value: part.value })).join(" · ")
+                    : t("logs.detailReceived")}
+                </TableCell>
                 <TableCell>
                   <Badge variant="outline" className={`${styles[log.status]} capitalize`}>
-                    {log.status}
+                    {log.status === "info"
+                      ? t("logs.statusInfo")
+                      : log.status === "success"
+                      ? t("logs.statusSuccess")
+                      : log.status === "warn"
+                      ? t("logs.statusWarn")
+                      : t("logs.statusError")}
                   </Badge>
                 </TableCell>
               </TableRow>
@@ -145,7 +167,7 @@ export default function Logs() {
             {filtered.length === 0 && (
               <TableRow>
                 <TableCell colSpan={4} className="py-12 text-center text-sm text-muted-foreground">
-                  {isLoading ? "Loading logs..." : activeBotId ? "No monitoring logs available." : "Connect a device to view logs."}
+                  {isLoading ? t("logs.loading") : activeBotId ? t("logs.noLogs") : t("logs.connectDevice")}
                 </TableCell>
               </TableRow>
             )}

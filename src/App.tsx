@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppLayout } from "@/components/AppLayout";
 import { ThingSpeakProvider } from "@/context/ThingSpeakContext";
+import { LanguageProvider } from "@/context/LanguageContext";
 import Index from "./pages/Index.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import Devices from "./pages/Devices.tsx";
@@ -29,23 +30,25 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <AuthProvider>
-        <ThingSpeakProvider>
-          <BrowserRouter>
-            <Routes>
-              <Route path="/login" element={<Auth />} />
-              <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
-              <Route path="/devices" element={<ProtectedRoute><AppLayout><Devices /></AppLayout></ProtectedRoute>} />
-              <Route path="/demo" element={<ProtectedRoute><AppLayout><Demo /></AppLayout></ProtectedRoute>} />
-              <Route path="/reports" element={<ProtectedRoute><AppLayout><Reports /></AppLayout></ProtectedRoute>} />
-              <Route path="/profile" element={<ProtectedRoute><AppLayout><Profile /></AppLayout></ProtectedRoute>} />
-              <Route path="/connect-bot" element={<ProtectedRoute><AppLayout><ConnectBot /></AppLayout></ProtectedRoute>} />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
-        </ThingSpeakProvider>
-      </AuthProvider>
+      <LanguageProvider>
+        <AuthProvider>
+          <ThingSpeakProvider>
+            <BrowserRouter>
+              <Routes>
+                <Route path="/login" element={<Auth />} />
+                <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
+                <Route path="/devices" element={<ProtectedRoute><AppLayout><Devices /></AppLayout></ProtectedRoute>} />
+                <Route path="/demo" element={<ProtectedRoute><AppLayout><Demo /></AppLayout></ProtectedRoute>} />
+                <Route path="/reports" element={<ProtectedRoute><AppLayout><Reports /></AppLayout></ProtectedRoute>} />
+                <Route path="/profile" element={<ProtectedRoute><AppLayout><Profile /></AppLayout></ProtectedRoute>} />
+                <Route path="/connect-bot" element={<ProtectedRoute><AppLayout><ConnectBot /></AppLayout></ProtectedRoute>} />
+                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </BrowserRouter>
+          </ThingSpeakProvider>
+        </AuthProvider>
+      </LanguageProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );
