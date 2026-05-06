@@ -15,13 +15,15 @@ import {
 import { useLocation, useNavigate } from "react-router-dom";
 import { useThingSpeak, ConnState } from "@/context/ThingSpeakContext";
 import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
+import { LanguageSelect } from "@/components/LanguageSelect";
 
-const titles: Record<string, { t: string; s: string }> = {
-  "/": { t: "Pesticide Spraying Bot Dashboard", s: "Real-Time Monitoring and Data Analytics" },
-  "/devices": { t: "Connected Devices", s: "Monitor multiple spraying bots" },
-  "/demo": { t: "Demo / Sample Data View", s: "Sample data shown before a bot is connected" },
-  "/reports": { t: "Reports", s: "Read-only performance summaries" },
-  "/profile": { t: "Profile", s: "User and monitoring access overview" },
+const titles: Record<string, { titleKey: string; subtitleKey: string }> = {
+  "/": { titleKey: "route.dashboard.title", subtitleKey: "route.dashboard.subtitle" },
+  "/devices": { titleKey: "route.devices.title", subtitleKey: "route.devices.subtitle" },
+  "/demo": { titleKey: "route.demo.title", subtitleKey: "route.demo.subtitle" },
+  "/reports": { titleKey: "route.reports.title", subtitleKey: "route.reports.subtitle" },
+  "/profile": { titleKey: "route.profile.title", subtitleKey: "route.profile.subtitle" },
 };
 
 function StatusPill({
@@ -66,20 +68,23 @@ function StatusPill({
 export function TopBar() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
-  const { t, s } = titles[pathname] ?? titles["/"];
+  const { t } = useLanguage();
+  const { titleKey, subtitleKey } = titles[pathname] ?? titles["/"];
   const { esp32, status } = useThingSpeak();
   const { logout, user, accounts, switchAccount } = useAuth();
+  const notifications: Array<{ t: string; d: string; c: string }> = [];
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b bg-background/80 px-4 backdrop-blur-xl md:px-6">
       <SidebarTrigger className="shrink-0" />
 
       <div className="hidden md:block min-w-0">
-        <h1 className="font-display text-lg font-bold leading-none truncate">{t}</h1>
-        <p className="mt-1 text-xs text-muted-foreground truncate">{s}</p>
+        <h1 className="font-display text-lg font-bold leading-none truncate">{t(titleKey)}</h1>
+        <p className="mt-1 text-xs text-muted-foreground truncate">{t(subtitleKey)}</p>
       </div>
 
       <div className="ml-auto flex items-center gap-2">
+        <LanguageSelect className="w-[120px]" />
 
         <ThemeToggle />
 
@@ -87,27 +92,31 @@ export function TopBar() {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="relative rounded-full">
               <Bell className="h-[1.2rem] w-[1.2rem]" />
-              <Badge className="absolute -right-0.5 -top-0.5 h-4 min-w-4 justify-center rounded-full bg-warning px-1 text-[10px] font-semibold text-warning-foreground">
-                2
-              </Badge>
+              {notifications.length > 0 && (
+                <Badge className="absolute -right-0.5 -top-0.5 h-4 min-w-4 justify-center rounded-full bg-warning px-1 text-[10px] font-semibold text-warning-foreground">
+                  {notifications.length}
+                </Badge>
+              )}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-80">
-            <DropdownMenuLabel>Notifications</DropdownMenuLabel>
+            <DropdownMenuLabel>{t("topbar.notifications")}</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            {[
-              { t: "Tank level below 25%", d: "1 min ago", c: "warning" },
-              { t: "Live monitoring feed updated", d: "8 min ago", c: "success" },
-              { t: "Bot reconnected to network", d: "20 min ago", c: "primary" },
-            ].map((n, i) => (
-              <DropdownMenuItem key={i} className="flex items-start gap-3 py-3">
-                <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full bg-${n.c}`} />
-                <div className="flex-1">
-                  <p className="text-sm font-medium leading-tight">{n.t}</p>
-                  <p className="mt-0.5 text-xs text-muted-foreground">{n.d}</p>
-                </div>
+            {notifications.length === 0 ? (
+              <DropdownMenuItem className="py-3 text-sm text-muted-foreground">
+                {t("topbar.noNotifications")}
               </DropdownMenuItem>
-            ))}
+            ) : (
+              notifications.map((n, i) => (
+                <DropdownMenuItem key={i} className="flex items-start gap-3 py-3">
+                  <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full bg-${n.c}`} />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium leading-tight">{n.t}</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">{n.d}</p>
+                  </div>
+                </DropdownMenuItem>
+              ))
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
 
@@ -122,7 +131,7 @@ export function TopBar() {
                 {user?.name?.substring(0, 2).toUpperCase() || "AG"}
               </AvatarFallback>
             </Avatar>
-            <span className="hidden text-sm font-medium sm:inline">{user?.name || "Agri Monitor User"}</span>
+            <span className="hidden text-sm font-medium sm:inline">{user?.name || t("topbar.defaultUser")}</span>
           </Button>
           
           <div className="h-4 w-px bg-border mx-0.5" />
@@ -136,7 +145,7 @@ export function TopBar() {
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuSeparator />
               <DropdownMenuLabel className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                <Users className="h-3 w-3" /> All Accounts
+                <Users className="h-3 w-3" /> {t("topbar.allAccounts")}
               </DropdownMenuLabel>
               {accounts.map((acc) => (
                 <DropdownMenuItem 
@@ -153,14 +162,14 @@ export function TopBar() {
               ))}
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => navigate("/login")} className="gap-2 font-bold">
-                <Plus className="h-4 w-4" /> Add Account
+                <Plus className="h-4 w-4" /> {t("topbar.addAccount")}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => {
                 logout();
                 navigate("/login");
               }} className="text-destructive focus:text-destructive font-bold">
-                Log out
+                {t("topbar.logout")}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

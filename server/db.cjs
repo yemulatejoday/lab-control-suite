@@ -1,12 +1,25 @@
 const sqlite3 = require('sqlite3').verbose();
 const { open } = require('sqlite');
 const path = require('path');
+const fs = require('fs');
 
 let db;
+const isRender = Boolean(process.env.RENDER || process.env.RENDER_EXTERNAL_URL);
+const dbPath =
+  process.env.DB_PATH ||
+  (process.env.VERCEL
+    ? path.join('/tmp', 'database.sqlite')
+    : isRender
+    ? path.join('/var/data', 'database.sqlite')
+    : path.join(__dirname, 'database.sqlite'));
 
 async function initDB() {
+  const dbDir = path.dirname(dbPath);
+  if (!fs.existsSync(dbDir)) {
+    fs.mkdirSync(dbDir, { recursive: true });
+  }
   db = await open({
-    filename: path.join(__dirname, 'database.sqlite'),
+    filename: dbPath,
     driver: sqlite3.Database
   });
 
@@ -50,7 +63,13 @@ async function createUser(email, password, name) {
 }
 
 async function getBots(userId) {
-  return db.all('SELECT * FROM bots WHERE userId = ?', [userId]);
+  return db.all(
+    `SELECT DISTINCT b.*
+     FROM bots b
+     INNER JOIN telemetry t ON t.botId = b.id
+     WHERE b.userId = ?`,
+    [userId],
+  );
 }
 
 async function addBot(userId, botId, name) {
@@ -68,6 +87,10 @@ async function getLatestTelemetry(botId) {
   return db.get('SELECT * FROM telemetry WHERE botId = ? ORDER BY timestamp DESC LIMIT 1', [botId]);
 }
 
+async function getTelemetryLogs(botId) {
+  return db.all('SELECT * FROM telemetry WHERE botId = ? ORDER BY timestamp DESC', [botId]);
+}
+
 async function getAvailableBots() {
   return db.all(`
     SELECT DISTINCT botId as id, 'Ready to Pair' as name 
@@ -76,4 +99,14 @@ async function getAvailableBots() {
   `);
 }
 
-module.exports = { initDB, getUser, createUser, getBots, addBot, addTelemetry, getLatestTelemetry, getAvailableBots };
+async function hasTelemetry(botId) {
+  const row = await db.get('SELECT 1 FROM telemetry WHERE botId = ? LIMIT 1', [botId]);
+  return !!row;
+}
+
+async function removeBotData(botId) {
+  await db.run('DELETE FROM telemetry WHERE botId = ?', [botId]);
+  await db.run('DELETE FROM bots WHERE id = ?', [botId]);
+}
+
+module.exports = { initDB, getUser, createUser, getBots, addBot, addTelemetry, getLatestTelemetry, getTelemetryLogs, getAvailableBots, removeBotData, hasTelemetry };

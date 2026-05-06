@@ -1,10 +1,13 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { toast } from "sonner";
+import { API_URL } from "@/config";
 
 interface User {
   email: string;
   name: string;
 }
+
+type StoredAccount = User & { token: string };
 
 interface AuthContextType {
   user: User | null;
@@ -23,7 +26,26 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const ACCOUNTS_KEY = "agri_accounts";
+
+const loadStoredAccounts = (): StoredAccount[] => {
+  try {
+    const raw = localStorage.getItem(ACCOUNTS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    console.error("Failed to parse accounts from localStorage", e);
+    return [];
+  }
+};
+
+const saveStoredAccounts = (accounts: StoredAccount[]) => {
+  localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts));
+};
+
+const upsertAccount = (accounts: StoredAccount[], next: StoredAccount) => {
+  const filtered = accounts.filter((acc) => acc.email !== next.email);
+  return [next, ...filtered];
+};
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(() => {
@@ -36,10 +58,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   });
 
-  const [accounts, setAccounts] = useState<User[]>([]);
+  const [accounts, setAccounts] = useState<StoredAccount[]>(() => loadStoredAccounts());
   const [activeBotId, setActiveBotId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [token, setToken] = useState<string | null>(localStorage.getItem("agri_token"));
+
+  useEffect(() => {
+    if (!user || !token) return;
+    setAccounts((prev) => {
+      const existing = prev.find((acc) => acc.email === user.email);
+      const next: StoredAccount = { email: user.email, name: user.name, token };
+      if (existing && existing.name === next.name && existing.token === next.token) {
+        return prev;
+      }
+      const updated = upsertAccount(prev, next);
+      saveStoredAccounts(updated);
+      return updated;
+    });
+  }, [user, token]);
 
   const login = async (email: string, password?: string) => {
     setIsLoading(true);
@@ -49,15 +85,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
-      const data = await res.json();
+      let data: any = {};
+      try {
+        data = await res.json();
+      } catch {
+        data = {};
+      }
+      if (!res.ok) {
+        if (res.status === 404) {
+          throw new Error("Account does not exist");
+        }
+        const invalidCreds = res.status === 401;
+        throw new Error(invalidCreds ? "Invalid email or password" : (data.error || "Login failed"));
+      }
       if (data.error) throw new Error(data.error);
       
       setUser(data.user);
       setToken(data.token);
       localStorage.setItem("agri_token", data.token);
       localStorage.setItem("agri_user", JSON.stringify(data.user));
+      setAccounts((prev) => {
+        const updated = upsertAccount(prev, { ...data.user, token: data.token });
+        saveStoredAccounts(updated);
+        return updated;
+      });
     } catch (e: any) {
-      toast.error(e.message || "Login failed");
+      const msg = e?.message || "Login failed";
+      const isNetwork = /Failed to fetch|NetworkError/i.test(msg);
+      toast.error(isNetwork ? "Unable to reach server. Is the API running?" : msg);
       throw e;
     } finally {
       setIsLoading(false);
@@ -79,6 +134,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setToken(data.token);
       localStorage.setItem("agri_token", data.token);
       localStorage.setItem("agri_user", JSON.stringify(data.user));
+      setAccounts((prev) => {
+        const updated = upsertAccount(prev, { ...data.user, token: data.token });
+        saveStoredAccounts(updated);
+        return updated;
+      });
     } catch (e: any) {
       toast.error(e.message || "Signup failed");
       throw e;
@@ -104,7 +164,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const switchAccount = (email: string) => {
-    // Backend would need more logic for multi-account
+    const account = accounts.find((acc) => acc.email === email);
+    if (!account) {
+      toast.error("Account not found");
+      return;
+    }
+    setUser({ email: account.email, name: account.name });
+    setToken(account.token);
+    localStorage.setItem("agri_user", JSON.stringify({ email: account.email, name: account.name }));
+    localStorage.setItem("agri_token", account.token);
+    setActiveBotId(null);
+    toast.success(`Switched to ${account.name}`);
   };
 
   const connectBot = (id: string) => {
@@ -118,7 +188,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   return (
     <AuthContext.Provider value={{ 
       user, 
-      accounts, 
+      accounts: accounts.map(({ email, name }) => ({ email, name })), 
       login, 
       logout, 
       switchAccount, 

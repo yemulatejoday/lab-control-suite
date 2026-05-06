@@ -30,6 +30,7 @@ import { useNavigate } from "react-router-dom";
 import { useBotSimulator } from "@/hooks/useBotSimulator";
 import { useAuth } from "@/context/AuthContext";
 import { API_URL } from "@/config";
+import { useLanguage } from "@/context/LanguageContext";
 import {
   Bar,
   BarChart,
@@ -57,20 +58,41 @@ const tooltipStyle = {
   fontSize: "12px",
 };
 
+const initialLiveData = {
+  distance: "0",
+  area: "0",
+  pesticide: "0.00",
+  time: "0.0",
+  battery: 100,
+  tank: 100,
+  status: "Offline",
+  completion: 0,
+  alerts: [] as string[],
+};
+
 export default function Dashboard() {
-  const { activeBotId, disconnectBot } = useAuth();
+  const { activeBotId, disconnectBot, connectBot } = useAuth();
   const navigate = useNavigate();
-  const [liveData, setLiveData] = useState<any>({
-    distance: "0",
-    area: "0",
-    pesticide: "0.00",
-    time: "0.0",
-    battery: 100,
-    tank: 100,
-    status: "Offline",
-    completion: 0,
-    alerts: []
-  });
+  const { t } = useLanguage();
+  const [liveData, setLiveData] = useState<any>(initialLiveData);
+  const [bots, setBots] = useState<any[]>([]);
+  const [isBotsLoading, setIsBotsLoading] = useState(false);
+
+  const fetchBots = async () => {
+    setIsBotsLoading(true);
+    try {
+      const token = localStorage.getItem("agri_token");
+      const res = await fetch(`${API_URL}/api/bots`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      setBots(Array.isArray(data) ? data : []);
+    } catch (e) {
+      toast.error(t("dashboard.fetchConnectedError"));
+    } finally {
+      setIsBotsLoading(false);
+    }
+  };
 
   const fetchTelemetry = async () => {
     if (!activeBotId) return;
@@ -79,6 +101,7 @@ export default function Dashboard() {
       const res = await fetch(`${API_URL}/api/telemetry/${activeBotId}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
+      if (!res.ok) throw new Error("Telemetry request failed");
       const data = await res.json();
       if (data && data.status) {
         setLiveData({
@@ -90,43 +113,90 @@ export default function Dashboard() {
           tank: data.tank,
           status: data.status,
           completion: Math.min(100, data.area * 10),
-          alerts: data.battery < 20 ? ["Low Battery Warning"] : []
+          alerts: data.battery < 20 ? ["alerts.lowBattery"] : [],
         });
+      } else {
+        setLiveData((prev: any) => ({
+          ...prev,
+          status: "Connected",
+          alerts: [],
+        }));
       }
     } catch (e) {
       console.error("Failed to fetch telemetry", e);
+      setLiveData((prev: any) => ({
+        ...prev,
+        status: "Offline",
+      }));
     }
   };
 
   useEffect(() => {
+    if (!activeBotId) return;
+    setLiveData({ ...initialLiveData, status: "Connecting" });
     fetchTelemetry();
     const interval = setInterval(fetchTelemetry, 3000);
     return () => clearInterval(interval);
+  }, [activeBotId]);
+
+  useEffect(() => {
+    fetchBots();
   }, [activeBotId]);
 
   const handleStartDiscovery = () => {
     navigate("/connect-bot");
   };
 
-  const hasDevices = activeBotId !== null;
+  const hasDevices = bots.length > 0;
+  const hasActiveDevice = activeBotId !== null;
+
+  const getStatusLabel = (status: string) => {
+    if (status === "Active") return t("status.active");
+    if (status === "Offline") return t("status.offline");
+    if (status === "Error") return t("status.error");
+    if (status === "Connected") return t("status.connected");
+    if (status === "Connecting") return t("status.connecting");
+    return status;
+  };
 
   const metrics = [
-    { label: "Distance Traveled", value: liveData.distance, unit: "meters", sub: `${activeBotId} total distance`, icon: Route },
-    { label: "Area Covered", value: liveData.area, unit: "acres", sub: `Field coverage`, icon: MapPinned },
-    { label: "Pesticide Sprayed", value: liveData.pesticide, unit: "liters", sub: "Measured tank output", icon: SprayCan },
-    { label: "Operating Time", value: "1h 12m", unit: "", sub: "Recorded active duration", icon: Clock3 },
+    { label: t("metric.distanceTraveled"), value: liveData.distance, unit: t("unit.meters"), sub: t("metric.totalDistance", { botId: activeBotId ?? "" }), icon: Route },
+    { label: t("metric.areaCovered"), value: liveData.area, unit: t("unit.acres"), sub: t("metric.fieldCoverage"), icon: MapPinned },
+    { label: t("metric.pesticideSprayed"), value: liveData.pesticide, unit: t("unit.liters"), sub: t("metric.measuredTankOutput"), icon: SprayCan },
+    { label: t("metric.operatingTime"), value: "1h 12m", unit: "", sub: t("metric.recordedActiveDuration"), icon: Clock3 },
   ];
 
-  if (!hasDevices) {
+  if (!hasDevices && !isBotsLoading) {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center text-center">
-        <div className="mb-6 flex h-24 w-24 items-center justify-center rounded-[2rem] bg-primary/10 text-primary animate-pulse">
-          <Plus className="h-12 w-12" />
-        </div>
-        <h2 className="font-display text-3xl font-black tracking-tight">No Devices Connected</h2>
-        <p className="mt-2 max-w-md text-muted-foreground">Start by connecting your first pesticide spraying bot to monitor its live telemetry and field performance.</p>
+        <h2 className="font-display text-3xl font-black tracking-tight">{t("dashboard.noDevicesTitle")}</h2>
+        <p className="mt-2 max-w-md text-muted-foreground">{t("dashboard.noDevicesDesc")}</p>
         <Button onClick={handleStartDiscovery} size="lg" className="mt-8 h-14 rounded-2xl px-8 text-lg font-bold shadow-glow transition-all hover:scale-105 active:scale-95">
-          Connect a Device
+          {t("button.connectDevice")}
+        </Button>
+      </div>
+    );
+  }
+
+  if (!hasActiveDevice && hasDevices) {
+    return (
+      <div className="flex min-h-[60vh] flex-col items-center justify-center text-center">
+        <h2 className="font-display text-3xl font-black tracking-tight">{t("dashboard.selectDeviceTitle")}</h2>
+        <p className="mt-2 max-w-md text-muted-foreground">{t("dashboard.selectDeviceDesc")}</p>
+        <div className="mt-6 flex flex-wrap justify-center gap-3">
+          {bots.map((bot) => (
+            <Button
+              key={bot.id}
+              variant="outline"
+              className="rounded-xl px-6 font-bold"
+              onClick={() => connectBot(bot.id)}
+            >
+              {bot.name || bot.id}
+            </Button>
+          ))}
+        </div>
+        <Button onClick={handleStartDiscovery} size="lg" className="mt-8 h-14 rounded-2xl px-8 text-lg font-bold shadow-glow transition-all hover:scale-105 active:scale-95">
+          {t("button.connectDevice")}
         </Button>
       </div>
     );
@@ -143,20 +213,20 @@ export default function Dashboard() {
             <div className="flex flex-col">
               <div className="flex items-center gap-2">
                 <Badge variant="outline" className="w-fit border-primary/30 bg-primary/10 text-[10px] font-bold uppercase tracking-wider text-primary">
-                  Live Monitoring Dashboard
+                  {t("dashboard.liveMonitoring")}
                 </Badge>
                 <Badge variant="secondary" className="text-[10px] font-bold uppercase tracking-wider bg-muted text-muted-foreground border-none">
-                  Read-Only
+                  {t("status.readOnly")}
                 </Badge>
               </div>
-              <h1 className="font-display text-2xl font-extrabold sm:text-3xl">Bot Monitoring Insights</h1>
+              <h1 className="font-display text-2xl font-extrabold sm:text-3xl">{t("dashboard.botInsights")}</h1>
             </div>
           </div>
         </div>
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
           <div className="flex items-center gap-2 rounded-2xl border bg-card px-4 py-3 text-sm font-bold shadow-sm">
             <span className={liveData.status === "Error" ? "pulse-dot bg-destructive" : liveData.status === "Active" ? "pulse-dot bg-success" : "pulse-dot bg-muted-foreground"} />
-            {activeBotId}: {liveData.status}
+            {activeBotId}: {getStatusLabel(liveData.status)}
           </div>
           <Button 
             onClick={handleStartDiscovery}
@@ -164,23 +234,44 @@ export default function Dashboard() {
             className="h-10 rounded-xl border-primary/20 bg-primary/5 font-bold text-primary hover:bg-primary hover:text-primary-foreground"
           >
             <Plus className="mr-2 h-4 w-4" />
-            Connect More
+            {t("button.connectMore")}
           </Button>
           <Button 
             onClick={() => {
               disconnectBot();
-              toast.info("Device Disconnected", {
-                description: "Real-time monitoring has been suspended."
+              toast.info(t("dashboard.deviceDisconnectedTitle"), {
+                description: t("dashboard.deviceDisconnectedDesc")
               });
             }}
             variant="outline" 
             className="h-10 rounded-xl border-destructive/20 bg-destructive/5 font-bold text-destructive hover:bg-destructive hover:text-destructive-foreground"
           >
             <WifiOff className="mr-2 h-4 w-4" />
-            Disconnect
+            {t("button.disconnect")}
           </Button>
         </div>
       </section>
+
+      {hasDevices && (
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t("dashboard.connectedBots")}</p>
+          <div className="flex flex-wrap gap-2">
+            {bots.map((bot) => (
+              <button
+                key={bot.id}
+                onClick={() => connectBot(bot.id)}
+                className={`rounded-xl px-4 py-2 text-xs font-bold transition-all ${
+                  bot.id === activeBotId
+                    ? "bg-primary text-primary-foreground shadow-glow"
+                    : "bg-secondary/50 text-muted-foreground hover:bg-secondary"
+                }`}
+              >
+                {bot.id}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {liveData.alerts.length > 0 && (
         <section className="animate-in fade-in slide-in-from-top-4 duration-500">
@@ -188,7 +279,7 @@ export default function Dashboard() {
             {liveData.alerts.map((alert, i) => (
               <div key={i} className="flex items-center gap-3 rounded-2xl border border-destructive/20 bg-destructive/5 p-4 text-sm font-medium text-destructive backdrop-blur-md">
                 <AlertTriangle className="h-5 w-5 shrink-0" />
-                {alert}
+                {t(alert)}
               </div>
             ))}
           </div>
@@ -220,34 +311,34 @@ export default function Dashboard() {
       <section className="grid gap-4 lg:grid-cols-3">
         <Card className="premium-card lg:col-span-1">
           <div className="flex items-center justify-between">
-            <h2 className="font-display text-base font-bold">Bot Status</h2>
+            <h2 className="font-display text-base font-bold">{t("dashboard.botStatus")}</h2>
             <Activity className="h-4 w-4 text-primary" />
           </div>
           <div className="mt-6 space-y-6">
             <div className="flex items-center justify-between rounded-2xl bg-secondary/70 p-4">
-              <span className="text-xs font-bold uppercase tracking-tight">Current State</span>
+              <span className="text-xs font-bold uppercase tracking-tight">{t("dashboard.currentState")}</span>
               <Badge className={liveData.status === "Error" ? "bg-destructive text-destructive-foreground" : liveData.status === "Active" ? "bg-success text-success-foreground" : "bg-muted text-muted-foreground"}>
-                {liveData.status}
+                {getStatusLabel(liveData.status)}
               </Badge>
             </div>
-            <StatusMeter label="Battery Level" value={liveData.battery} icon={BatteryCharging} />
-            <StatusMeter label="Pesticide Tank Level" value={liveData.tank} icon={Droplets} />
+            <StatusMeter label={t("dashboard.batteryLevel")} value={liveData.battery} icon={BatteryCharging} />
+            <StatusMeter label={t("dashboard.tankLevel")} value={liveData.tank} icon={Droplets} />
           </div>
         </Card>
 
         <Card className="premium-card lg:col-span-2">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="font-display text-base font-bold">Live Progress</h2>
-              <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Distance Traveled Trend (meters)</p>
+              <h2 className="font-display text-base font-bold">{t("dashboard.liveProgress")}</h2>
+              <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">{t("dashboard.distanceTrend")}</p>
             </div>
             <Route className="h-4 w-4 text-primary" />
           </div>
           <div className="mt-6 flex h-[260px] items-center justify-center rounded-2xl border border-dashed text-center p-8 bg-muted/5">
             <div>
               <Activity className="h-8 w-8 text-muted-foreground mx-auto mb-2 opacity-50" />
-              <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Real-time Trend Chart</p>
-              <p className="text-[10px] text-muted-foreground mt-1">Collecting path data from {activeBotId}...</p>
+              <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">{t("dashboard.realTimeChart")}</p>
+              <p className="text-[10px] text-muted-foreground mt-1">{t("dashboard.collectingPathData", { botId: activeBotId })}</p>
             </div>
           </div>
         </Card>
@@ -257,16 +348,16 @@ export default function Dashboard() {
         <Card className="premium-card">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="font-display text-base font-bold">Resource Allocation</h2>
-              <p className="text-xs text-muted-foreground uppercase tracking-widest font-bold">Liters sprayed per session time</p>
+              <h2 className="font-display text-base font-bold">{t("dashboard.resourceAllocation")}</h2>
+              <p className="text-xs text-muted-foreground uppercase tracking-widest font-bold">{t("dashboard.litersPerSession")}</p>
             </div>
             <SprayCan className="h-4 w-4 text-primary" />
           </div>
           <div className="mt-6 flex h-[260px] items-center justify-center rounded-2xl border border-dashed text-center p-8 bg-muted/5">
             <div>
               <Droplets className="h-8 w-8 text-muted-foreground mx-auto mb-2 opacity-50" />
-              <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Resource Allocation Chart</p>
-              <p className="text-[10px] text-muted-foreground mt-1">Measuring pesticide distribution efficiency...</p>
+              <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">{t("dashboard.resourceChart")}</p>
+              <p className="text-[10px] text-muted-foreground mt-1">{t("dashboard.measuringDistribution")}</p>
             </div>
           </div>
         </Card>
@@ -274,13 +365,13 @@ export default function Dashboard() {
 
       <Card className="rounded-2xl p-5">
         <div className="flex items-center justify-between">
-          <h2 className="font-display text-base font-bold">Activity Logs</h2>
-          <Badge variant="outline" className="border-primary/30 text-primary">Latest monitoring records</Badge>
+          <h2 className="font-display text-base font-bold">{t("dashboard.activityLogs")}</h2>
+          <Badge variant="outline" className="border-primary/30 text-primary">{t("dashboard.latestRecords")}</Badge>
         </div>
         <div className="mt-4 flex flex-col items-center justify-center py-12 text-center border border-dashed rounded-2xl bg-muted/5">
           <Clock3 className="h-8 w-8 text-muted-foreground mb-2 opacity-50" />
-          <p className="text-sm font-bold text-muted-foreground">No recent logs from {activeBotId}</p>
-          <p className="text-xs text-muted-foreground mt-1">Logs will appear here once the bot starts its mission.</p>
+          <p className="text-sm font-bold text-muted-foreground">{t("dashboard.noLogsTitle", { botId: activeBotId })}</p>
+          <p className="text-xs text-muted-foreground mt-1">{t("dashboard.noLogsDesc")}</p>
         </div>
       </Card>
 

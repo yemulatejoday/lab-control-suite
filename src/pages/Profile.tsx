@@ -2,39 +2,83 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Clock3, Mail, MonitorCheck, ShieldCheck, Tractor, UserRound, Edit2, Check, X } from "lucide-react";
-import { monitoredDeviceList } from "@/lib/monitoring-devices";
 import { useAuth } from "@/context/AuthContext";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { API_URL } from "@/config";
+import { useLanguage } from "@/context/LanguageContext";
 
 export default function Profile() {
   const { user, updateProfile, activeBotId } = useAuth();
+  const { t } = useLanguage();
   const [isEditing, setIsEditing] = useState(false);
   const [newName, setNewName] = useState(user?.name || "");
+  const [latestTelemetry, setLatestTelemetry] = useState<any | null>(null);
+  const [isTelemetryLoading, setIsTelemetryLoading] = useState(false);
+
+  useEffect(() => {
+    if (!activeBotId) {
+      setLatestTelemetry(null);
+      return;
+    }
+
+    const fetchLatest = async () => {
+      setIsTelemetryLoading(true);
+      try {
+        const token = localStorage.getItem("agri_token");
+        const res = await fetch(`${API_URL}/api/telemetry/${activeBotId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        setLatestTelemetry(data && data.status ? data : null);
+      } catch (e) {
+        setLatestTelemetry(null);
+      } finally {
+        setIsTelemetryLoading(false);
+      }
+    };
+
+    fetchLatest();
+  }, [activeBotId]);
 
   const handleSave = () => {
     if (!newName.trim()) {
-      toast.error("Name cannot be empty");
+      toast.error(t("profile.nameEmpty"));
       return;
     }
     updateProfile(newName);
     setIsEditing(false);
-    toast.success("Profile updated!");
+    toast.success(t("profile.updated"));
+  };
+
+  const getStatusLabel = (status: string) => {
+    if (status === "Active") return t("status.active");
+    if (status === "Offline") return t("status.offline");
+    if (status === "Error") return t("status.error");
+    if (status === "Connected") return t("status.connected");
+    if (status === "Connecting") return t("status.connecting");
+    if (status === "Unknown") return t("status.unknown");
+    return status;
   };
 
   const profileItems = [
-    { label: "Total Connected Devices", value: activeBotId ? "1 Bot" : "0 Bots", icon: Tractor },
-    { label: "Monitoring Access", value: "Read Only", icon: ShieldCheck },
+    { label: t("profile.totalConnectedDevices"), value: activeBotId ? t("profile.oneBot") : t("profile.zeroBots"), icon: Tractor },
+    { label: t("profile.monitoringAccess"), value: t("profile.readOnly"), icon: ShieldCheck },
   ];
 
-  const activity = monitoredDeviceList.map((device) => ({
-    device: `${device.name} · ${device.id}`,
-    lastActive: device.sync,
-    status: device.state,
-    task: device.task,
-  }));
+  const activity = latestTelemetry
+    ? [
+        {
+          device: activeBotId,
+          lastActive: latestTelemetry.timestamp || "--",
+          status: latestTelemetry.status || "Unknown",
+          battery: latestTelemetry.battery,
+          tank: latestTelemetry.tank,
+        },
+      ]
+    : [];
   return (
     <div className="space-y-6">
       <Card className="rounded-2xl p-6">
@@ -46,7 +90,7 @@ export default function Profile() {
           </Avatar>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-3 mb-1">
-              <Badge variant="outline" className="border-primary/30 bg-primary/10 text-primary font-bold">Bot Owner Profile</Badge>
+              <Badge variant="outline" className="border-primary/30 bg-primary/10 text-primary font-bold">{t("profile.botOwnerProfile")}</Badge>
               {!isEditing ? (
                 <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full" onClick={() => setIsEditing(true)}>
                   <Edit2 className="h-3 w-3 text-muted-foreground" />
@@ -71,9 +115,9 @@ export default function Profile() {
                 autoFocus
               />
             ) : (
-              <h1 className="font-display text-3xl font-black truncate">{user?.name || "Agri Monitor User"}</h1>
+              <h1 className="font-display text-3xl font-black truncate">{user?.name || t("topbar.defaultUser")}</h1>
             )}
-            <p className="text-sm text-muted-foreground mt-1 max-w-lg">Personalized monitoring access for your pesticide spraying fleet.</p>
+            <p className="text-sm text-muted-foreground mt-1 max-w-lg">{t("profile.subtitle")}</p>
           </div>
         </div>
       </Card>
@@ -93,10 +137,10 @@ export default function Profile() {
       <Card className="rounded-2xl p-5">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 font-display font-bold">
-            <Clock3 className="h-4 w-4 text-primary" /> Recent Device Activity
+            <Clock3 className="h-4 w-4 text-primary" /> {t("profile.recentActivity")}
           </div>
           <Badge variant="outline" className="border-primary/30 text-primary">
-            <MonitorCheck className="mr-1 h-3 w-3" /> Monitoring records
+            <MonitorCheck className="mr-1 h-3 w-3" /> {t("profile.monitoringRecords")}
           </Badge>
         </div>
         <div className="mt-4 overflow-x-auto">
@@ -104,10 +148,11 @@ export default function Profile() {
             <table className="w-full min-w-[640px] text-left text-sm">
               <thead className="border-b text-xs uppercase tracking-wider text-muted-foreground">
                 <tr>
-                  <th className="py-3 pr-4 font-semibold">Device ID</th>
-                  <th className="py-3 pr-4 font-semibold">Last Active Time</th>
-                  <th className="py-3 pr-4 font-semibold">Status</th>
-                  <th className="py-3 pr-4 font-semibold">Last Task Status</th>
+                  <th className="py-3 pr-4 font-semibold">{t("profile.deviceId")}</th>
+                  <th className="py-3 pr-4 font-semibold">{t("profile.lastActiveTime")}</th>
+                  <th className="py-3 pr-4 font-semibold">{t("profile.status")}</th>
+                  <th className="py-3 pr-4 font-semibold">{t("profile.battery")}</th>
+                  <th className="py-3 pr-4 font-semibold">{t("profile.tank")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -116,20 +161,26 @@ export default function Profile() {
                     <td className="py-3 pr-4 font-semibold">{item.device}</td>
                     <td className="py-3 pr-4 font-mono text-xs text-muted-foreground">{item.lastActive}</td>
                     <td className="py-3 pr-4">
-                      <Badge variant="outline" className={item.status === "Active" ? "border-success/30 bg-success/10 text-success" : "border-muted-foreground/30 bg-muted text-muted-foreground"}>{item.status}</Badge>
+                      <Badge variant="outline" className={item.status === "Active" ? "border-success/30 bg-success/10 text-success" : "border-muted-foreground/30 bg-muted text-muted-foreground"}>{getStatusLabel(item.status)}</Badge>
                     </td>
-                    <td className="py-3 pr-4">
-                      <Badge variant="outline" className={item.task === "Completed" ? "border-primary/30 bg-primary/10 text-primary" : "border-accent/30 bg-accent/10 text-accent"}>{item.task}</Badge>
-                    </td>
+                    <td className="py-3 pr-4 text-xs text-muted-foreground">{typeof item.battery === "number" ? `${item.battery}%` : "--"}</td>
+                    <td className="py-3 pr-4 text-xs text-muted-foreground">{typeof item.tank === "number" ? `${item.tank}%` : "--"}</td>
                   </tr>
                 ))}
+                {activity.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="py-8 text-center text-sm text-muted-foreground">
+                      {isTelemetryLoading ? t("profile.loadingTelemetry") : t("profile.noTelemetry")}
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           ) : (
             <div className="flex flex-col items-center justify-center py-12 text-center border-2 border-dashed border-muted/50 rounded-2xl">
               <MonitorCheck className="h-10 w-10 text-muted mb-3" />
-              <p className="font-bold text-muted-foreground">No Bot Activity Recorded</p>
-              <p className="text-xs text-muted-foreground mt-1">Connect a device to see historical telemetry logs.</p>
+              <p className="font-bold text-muted-foreground">{t("profile.noActivityTitle")}</p>
+              <p className="text-xs text-muted-foreground mt-1">{t("profile.noActivityDesc")}</p>
             </div>
           )}
         </div>
